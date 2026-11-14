@@ -28,6 +28,14 @@ TEMPLATES: dict[str, tuple[str, str]] = {
     "flag_red": ("Drapeau rouge", "Red flag"),
     "flag_debris": ("Débris en piste", "Debris on track"),
     "flag_black": ("Drapeau noir pour toi", "Black flag for you"),
+    "faster_behind": (
+        "Voiture plus rapide, {s} secondes derrière",
+        "Faster car, {s} seconds behind",
+    ),
+    "faster_behind_1": (
+        "Voiture plus rapide, une seconde derrière",
+        "Faster car, one second behind",
+    ),
     "offtrack_self": ("Hors piste, attention au retour", "Off track, rejoin safely"),
     # --- P1 course
     "flag_green": ("Drapeau vert", "Green flag"),
@@ -265,4 +273,5 @@ def static_phrases(lang: str = "fr") -> list[str]:
 def danger_phrases(lang: str = "fr") -> list[str]:
     """Phrases P0 paramétrées, pré-synthétisées pour toutes les distances annoncées."""
     keys = ("stopped_ahead", "offtrack_ahead", "accident_ahead")
-    return [render(k, lang, dist=d) for k in keys for d in range(50, 651, 50)]
+    out = [render(k, lang, dist=d) for k in keys for d in range(50, 651, 50)]
+    return out + [render("faster_behind", lang, s=s) for s in range(2, 4)]

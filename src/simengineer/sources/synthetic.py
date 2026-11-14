@@ -360,8 +360,13 @@ def generate(sc: Scenario) -> RawSession:
             if car.gap_m < 0:
                 t_gap -= lap0
             tt = t_car * car.pace + t_gap
+            # Au-delà de la fin de la chronologie (voiture plus rapide) : on reboucle.
+            total, dist = t_all[-1], s_all[-1]
+            wraps = np.floor(tt / total)
             s_car = np.where(
-                tt >= 0, np.interp(tt, t_all, s_all), np.interp(tt + lap0, t_all, s_all) - length
+                tt >= 0,
+                np.interp(tt - wraps * total, t_all, s_all) + wraps * dist,
+                np.interp(tt + lap0, t_all, s_all) - length,
             )
         car_pct[:, car.idx] = (s_car % length) / length
         surf = np.full(n_frames, int(TrackSurface.ON_TRACK), dtype=np.int64)

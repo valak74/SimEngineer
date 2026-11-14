@@ -64,7 +64,7 @@ def test_formatting() -> None:
     assert fmt_lap_time(92.34) == "1:32,3" and fmt_lap_time(92.34, "en") == "1:32.3"
     assert fmt_delta(-0.234) == "moins 0,23" and fmt_delta(0.5, "en") == "plus 0.50"
     assert render("stopped_ahead", "fr", dist=300) == "Voiture arrêtée devant, 300 mètres"
-    assert "Libre" in static_phrases("fr") and len(danger_phrases("en")) == 39
+    assert "Libre" in static_phrases("fr") and len(danger_phrases("en")) == 41
 
 
 def test_priority_order_and_single_voice() -> None:

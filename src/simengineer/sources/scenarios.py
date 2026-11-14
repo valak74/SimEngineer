@@ -52,6 +52,17 @@ def accident() -> Scenario:
     )
 
 
+def multiclass() -> Scenario:
+    """Une voiture d'une classe plus rapide (+15 %) arrive par derrière puis double à gauche."""
+    return Scenario(
+        n_laps=2,
+        others=(
+            OtherCar(idx=11, gap_m=-260.0, pace=1.15, side="left"),
+            OtherCar(idx=12, gap_m=-120.0, pace=1.0, side="right"),  # même rythme : silence
+        ),
+    )
+
+
 def race() -> Scenario:
     """Course de 12 tours avec trafic, jaune, hors-piste et défauts de pilotage variés."""
     slow_t3 = lap_style(c2=CornerStyle(brake_offset_m=-14.0), c6=CornerStyle(throttle_offset_m=12))
@@ -104,6 +115,7 @@ SCENARIOS: dict[str, Callable[[], Scenario]] = {
     "overtake": overtake,
     "accident": accident,
     "race": race,
+    "multiclass": multiclass,
 }
 
 

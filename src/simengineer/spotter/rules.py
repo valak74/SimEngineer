@@ -101,6 +101,87 @@ def slow_cars_ahead(
     return out
 
 
+@dataclass(frozen=True, slots=True)
+class Closing:
+    car_idx: int
+    gap_s: float  # écart en temps derrière le pilote
+    rate: float  # secondes gagnées par seconde
+
+
+class PlayerTrail:
+    """Instant du dernier passage du pilote à chaque point du tour (pas de 5 m).
+
+    Écart en temps d'une voiture derrière = maintenant - instant où le pilote était à sa
+    position. Contrairement à l'écart en mètres, il ne fait pas l'accordéon aux freinages.
+    """
+
+    def __init__(self, track_length_m: float, step_m: float = 5.0) -> None:
+        self.n = max(int(track_length_m / step_m), 1)
+        self.times = np.full(self.n, np.nan)
+        self._last: int | None = None
+
+    def update(self, pct: float, t: float) -> None:
+        b = int(pct * self.n) % self.n
+        last = self._last
+        if last is None or (b - last) % self.n > self.n // 2:  # départ ou recul : un seul point
+            self.times[b] = t
+        else:
+            i = (last + 1 + np.arange((b - last) % self.n)) % self.n
+            self.times[i] = t
+        self._last = b
+
+    def gaps(self, pcts: FloatArray, t: float) -> FloatArray:
+        b = (np.clip(pcts, 0.0, 0.999999) * self.n).astype(np.int64)
+        g = t - self.times[b]
+        return np.asarray(np.where(pcts >= 0.0, g, np.nan), dtype=np.float64)
+
+
+def gaps_behind(player_pct: float, pcts: FloatArray, track_length_m: float) -> FloatArray:
+    """Distance (m) de chaque voiture DERRIÈRE le pilote, le long de la piste."""
+    return np.asarray(((player_pct - pcts) % 1.0) * track_length_m, dtype=np.float64)
+
+
+def faster_cars_behind(
+    player_idx: int,
+    gap_s_now: FloatArray,
+    gap_s_before: FloatArray,
+    gap_m_now: FloatArray,
+    dt: float,
+    surfaces: IntArray,
+    on_pit: NDArray[np.bool_] | None,
+    max_gap_s: float,
+    max_distance_m: float,
+    min_rate: float,
+) -> list[Closing]:
+    """Voitures derrière qui reprennent du temps, à moins de `max_gap_s` secondes.
+
+    Basé uniquement sur `CarIdxLapDistPct` : pas de classe ni de côté.
+    """
+    if dt <= 0:
+        return []
+    mask = surfaces == TrackSurface.ON_TRACK
+    if on_pit is not None:
+        mask &= ~on_pit
+    if 0 <= player_idx < len(mask):
+        mask[player_idx] = False
+    with np.errstate(invalid="ignore"):
+        rate = (gap_s_before - gap_s_now) / dt
+        keep = (
+            mask
+            & np.isfinite(rate)
+            & (gap_m_now > 12.0)  # à hauteur : c'est CarLeftRight qui annonce
+            & (gap_m_now <= max_distance_m)
+            & (gap_s_now > 0.0)
+            & (gap_s_now <= max_gap_s)
+            & (rate >= min_rate)
+            & (rate < 1.0)  # saut (tour bouclé, téléportation) : ignoré
+        )
+    return sorted(
+        (Closing(int(i), float(gap_s_now[i]), float(rate[i])) for i in np.flatnonzero(keep)),
+        key=lambda c: c.gap_s,
+    )
+
+
 def announce_distance(distance_m: float) -> int:
     """Distance arrondie à 50 m (au moins 50) : phrases pré-synthétisées."""
     return max(50, round(distance_m / 50.0) * 50)

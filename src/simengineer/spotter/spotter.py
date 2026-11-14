@@ -52,6 +52,11 @@ class Spotter:
         self._stage_t: dict[int, float] = {}
         self._accident_t = -1e9
         self._near_t = -1e9
+        self._fast_since: dict[int, float] = {}
+        # écarts derrière, ~2 s d'historique à 20 Hz
+        self._gap_hist: deque[tuple[float, FloatArray]] = deque(maxlen=41)
+        self._trail = rules.PlayerTrail(track_length_m)
+        self._fast_said: dict[int, float] = {}
         # drapeaux / hors-piste
         self._flags: int | None = None
         self._surface = int(TrackSurface.ON_TRACK)
@@ -76,10 +81,15 @@ class Spotter:
         priority: Priority,
         dedupe: str | None = None,
         cooldown_s: float = 1.0,
+        ttl_s: float | None = None,
         **params: Any,
     ) -> None:
         text = render(key, self.lang, **params)
-        out.append(Utterance(priority, dedupe or key, text, cooldown_s=cooldown_s, data_time=stamp))
+        out.append(
+            Utterance(
+                priority, dedupe or key, text, ttl_s=ttl_s, cooldown_s=cooldown_s, data_time=stamp
+            )
+        )
         self.alert_count += 1
         if self._log is not None:
             record = {
@@ -165,6 +175,48 @@ class Spotter:
             self._side_t = t
             self._say(out, f, stamp, rules.still_key(state) or key, Priority.P0, cooldown_s=0.5)
 
+    def _faster_step(
+        self,
+        f: Frame,
+        stamp: float | None,
+        out: list[Utterance],
+        pcts: FloatArray,
+        surfaces: Any,
+    ) -> None:
+        cfg, t = self.cfg, f.session_time
+        self._trail.update(f.lap_dist_pct, t)
+        gap_s = self._trail.gaps(pcts, t)
+        self._gap_hist.append((t, gap_s))
+        if f.speed < 20.0 or rules.is_side_occupied(self._side):
+            self._fast_since.clear()
+            return
+        t_old, gap_old = self._gap_hist[0]
+        if t - t_old < 1.5:
+            return
+        found = rules.faster_cars_behind(
+            f.player_car_idx, gap_s, gap_old, rules.gaps_behind(f.lap_dist_pct, pcts, self.length),
+            t - t_old, surfaces, f.car_idx_on_pit_road, cfg.faster_warn_s,
+            cfg.faster_max_distance_m, cfg.faster_rate,
+        )  # fmt: skip
+        seen = {c.car_idx for c in found}
+        for idx in list(self._fast_since):
+            if idx not in seen:
+                del self._fast_since[idx]
+        for c in found:
+            since = self._fast_since.setdefault(c.car_idx, t)
+            if t - since < cfg.faster_confirm_s:
+                continue
+            if t - self._fast_said.get(c.car_idx, -1e9) < cfg.faster_cooldown_s:
+                continue
+            self._fast_said[c.car_idx] = t
+            secs = max(1, round(c.gap_s))
+            key = "faster_behind_1" if secs == 1 else "faster_behind"
+            self._say(
+                out, f, stamp, key, Priority.P1, f"faster:{c.car_idx}", cooldown_s=5.0,
+                ttl_s=3.0, s=secs, car_idx=c.car_idx,
+            )  # fmt: skip
+            break  # une annonce à la fois
+
     def _traffic_step(
         self, f: Frame, stamp: float | None, out: list[Utterance], in_pits: bool
     ) -> bool:
@@ -185,6 +237,8 @@ class Spotter:
             return near
         cfg = self.cfg
         speeds = rules.estimate_speeds(p_old, pcts, t - t_old, self.length)
+        if cfg.faster_enabled:
+            self._faster_step(f, stamp, out, pcts, surfaces)
         reach = max(cfg.stopped_alert_distance_m, cfg.accident_distance_m)
         hazards = rules.slow_cars_ahead(
             f.player_car_idx, f.lap_dist_pct, pcts, speeds, surfaces, f.car_idx_on_pit_road,

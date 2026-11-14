@@ -5,6 +5,7 @@ import time
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from simengineer.core.config import SpotterConfig
 from simengineer.core.vars import CarLeftRight, Flags, TrackSurface
@@ -162,3 +163,37 @@ def test_in_battle_context() -> None:
         flags.append(spotter.in_battle)
     assert not flags[0] and any(flags) and not flags[-1]
     assert TrackSurface.ON_TRACK == 3
+
+
+def test_player_trail_time_gaps() -> None:
+    trail = rules.PlayerTrail(1000.0, step_m=5.0)
+    for i in range(0, 201):  # 10 m/s pendant 20 s : un tour de 200 m... sur 1000 m
+        trail.update((i * 0.5) / 100.0 % 1.0, i * 0.5)
+    pcts = np.array([0.95, 0.90, 0.99, -1.0])
+    gaps = trail.gaps(pcts, 100.0)
+    assert gaps[0] == pytest.approx(5.0, abs=0.6) and gaps[1] == pytest.approx(10.0, abs=0.6)
+    assert np.isnan(gaps[3])
+
+
+def test_faster_car_rule() -> None:
+    now = np.array([0.0, 2.0, 2.0, 2.0])
+    before = np.array([0.0, 2.2, 2.0, 2.5])  # voiture 1 : +0,1 s/s ; 2 : même rythme ; 3 : saut
+    gap_m = np.array([0.0, 80.0, 80.0, 80.0])
+    surf = np.array([3, 3, 3, 3])
+    out = rules.faster_cars_behind(0, now, before, gap_m, 2.0, surf, None, 3.0, 400.0, 0.04)
+    assert [(c.car_idx, round(c.rate, 2)) for c in out] == [(1, 0.1), (3, 0.25)]
+    beside = rules.faster_cars_behind(0, now, before, gap_m * 0 + 5, 2.0, surf, None, 3, 400, 0.04)
+    assert beside == []  # à hauteur : CarLeftRight s'en charge
+
+
+def test_multiclass_faster_car_announced_once() -> None:
+    said = run(get_scenario("multiclass"))
+    faster = [(t, k, x) for t, k, x in said if k.startswith("faster")]
+    assert [(k, x) for _, k, x in faster] == [
+        ("faster:11", "Voiture plus rapide, 3 secondes derrière")
+    ]
+    t_alert = faster[0][0]
+    t_left = next(t for t, k, _ in said if k == "car_left")
+    assert 1.0 < t_left - t_alert < 30.0  # annoncée bien avant d'arriver à hauteur
+    for name in ("race", "overtake", "clean", "perf"):  # même rythme : jamais d'alerte
+        assert not any(k.startswith("faster") for _, k, _ in run(get_scenario(name)))

@@ -69,6 +69,13 @@ class SpotterConfig(_Section):
     accident_distance_m: float = 600.0
     accident_cooldown_s: float = 15.0
     offtrack_cooldown_s: float = 10.0
+    # Voiture plus rapide qui arrive derrière (multiclasse, retardataire)
+    faster_enabled: bool = True
+    faster_max_distance_m: float = 400.0
+    faster_rate: float = 0.04  # rapprochement minimal : 0,04 s gagnée par seconde (~4 %)
+    faster_warn_s: float = 3.0  # annonce quand elle est à moins de N secondes derrière
+    faster_confirm_s: float = 0.5
+    faster_cooldown_s: float = 30.0  # par voiture
     alerts_log: str = "alerts.jsonl"
 
 
