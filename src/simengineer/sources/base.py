@@ -152,9 +152,11 @@ class RawSessionSource:
     def frames(self) -> Iterator[Frame]:
         raw = self._raw
         builder = FrameBuilder(raw.columns.keys())
-        # Les colonnes scalaires sont converties en listes : indexation ~10x plus rapide.
+        # Rejeu accéléré : colonnes scalaires en listes (indexation ~10x plus rapide).
+        # En temps réel on garde les tableaux numpy : mémoire minimale, 60 Hz suffisent.
         cols: dict[str, Any] = {
-            name: (col.tolist() if col.ndim == 1 else col) for name, col in raw.columns.items()
+            name: (col.tolist() if col.ndim == 1 and not self._realtime else col)
+            for name, col in raw.columns.items()
         }
         period = 1.0 / raw.tick_rate
         start = time.perf_counter()

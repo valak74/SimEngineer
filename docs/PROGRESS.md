@@ -12,4 +12,10 @@
 | 7 Références | fait | import .ibt et CSV (unités auto, temps reconstruit), provenance + droits obligatoires, delta temps réel O(1), sélection automatique même circuit/même voiture |
 | 8 Profil et programme | fait | tendances par virage multi-séances (pente, défaut dominant), un thème par séance avec exercices et objectif chiffré, calibration des seuils sur la dispersion du pilote (appliquée à la séance suivante) |
 | 9 Setup | fait | indice de sous-virage et contre-braquages par phase (signes estimés, pas supposés), températures/pressions pneus, pistes de réglage, avant/après sur tours propres avec verdict, guide d'application manuelle |
-| 10 Packaging et perf | à faire | |
+| 10 Packaging et perf | fait | scripts Windows (installation, démarrage auto, PyInstaller), `perf` : 1,74 % d'un cœur et 80 Mo en simulé, `measure-position`, attente et reconnexion iRacing, source live testée avec un faux pyirsdk ; tout reste à vérifier sur le PC (RUN_ON_PC.md) |
+
+## Synthèse
+
+- 11 phases committées ; `pytest -q`, `ruff check .`, `mypy src` (strict) verts.
+- Aucune hypothèse iRacing, voix ou LLM n'est vérifiée : 29 points à faire sur le PC,
+  listés dans `docs/RUN_ON_PC.md`.

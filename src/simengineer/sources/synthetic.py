@@ -278,10 +278,11 @@ def generate(sc: Scenario) -> RawSession:
         _n("player_car_idx"): np.zeros(n_frames, dtype=np.int64),
         _n("session_state"): np.full(n_frames, 4, dtype=np.int64),
     }
-    # Position (Lat/Lon) par intégration du cap.
-    heading = np.cumsum(chan("curvature") * speed / TICK_RATE)
-    x = np.cumsum(np.cos(heading) * speed / TICK_RATE)
-    y = np.cumsum(np.sin(heading) * speed / TICK_RATE)
+    # Position (Lat/Lon) : fonction de la distance au tour (même tracé à chaque tour).
+    geo = profiles[0]
+    heading = np.cumsum(geo.curvature * DS)
+    x = np.interp(s_lap, geo.s, np.cumsum(np.cos(heading) * DS))
+    y = np.interp(s_lap, geo.s, np.cumsum(np.sin(heading) * DS))
     cols[_n("lat")] = 45.0 + y / 111_320.0
     cols[_n("lon")] = 5.0 + x / (111_320.0 * np.cos(np.radians(45.0)))
 
@@ -333,8 +334,8 @@ def generate(sc: Scenario) -> RawSession:
         cols[_n("session_laps_remain")] = np.full(n_frames, UNLIMITED_LAPS, dtype=np.int64)
 
     # Autres voitures.
-    car_pct = np.full((n_frames, N_CARS), -1.0)
-    car_surf = np.full((n_frames, N_CARS), int(TrackSurface.NOT_IN_WORLD), dtype=np.int64)
+    car_pct = np.full((n_frames, N_CARS), -1.0, dtype=np.float32)
+    car_surf = np.full((n_frames, N_CARS), int(TrackSurface.NOT_IN_WORLD), dtype=np.int8)
     car_pit = np.zeros((n_frames, N_CARS), dtype=np.bool_)
     car_pct[:, 0] = pct
     car_surf[:, 0] = surface

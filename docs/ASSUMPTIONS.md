@@ -62,3 +62,10 @@ Tous les noms sont centralisés dans `src/simengineer/core/vars.py` (`VARS`).
 | Course au temps : tours restants = ceil(temps restant / temps au tour moyen) + 1 (tour en cours) ; l'arrivée dépend en réalité du leader | approximation assumée |
 | Indice de sous-virage : rapport direction/démultiplication 12:1 et empattement 2,46 m (Cup 992), configurables | à vérifier |
 | Usure pneus linéaire par tour entre deux arrêts | approximation assumée |
+
+## G. Performance et packaging
+| Hypothèse | Statut |
+|---|---|
+| Budget CPU/RAM tenu avec la source `live` (mesuré seulement en simulé : 1,74 %, 80 Mo) | à mesurer (`simengineer perf --source live`) |
+| Pas de baisse de FPS iRacing | à mesurer |
+| L'exécutable PyInstaller embarque correctement faster-whisper / Piper / onnxruntime | à vérifier |

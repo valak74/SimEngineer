@@ -150,17 +150,22 @@ def run(
     if null_voice:
         cfg.voice.tts_backend = "null"
         cfg.voice.ptt_kind = "none"
-    application = build_app(cfg, echo=typer.echo)
-    try:
-        session_id = application.run(max_frames)
-    except KeyboardInterrupt:
-        session_id = application.session_id
-        typer.echo("Arrêt demandé.")
-    stats = application.stats()
-    typer.echo(
-        f"Session {session_id} terminée : {stats['frames']} images, "
-        f"{stats['mean_frame_ms']} ms/image en moyenne, max {stats['max_frame_ms']} ms."
-    )
+    # Source live : après chaque session on se remet en attente d'iRacing (démarrage auto).
+    keep_waiting = cfg.source.kind == "live" and cfg.source.wait_for_sim and max_frames is None
+    while True:
+        application = build_app(cfg, echo=typer.echo)
+        try:
+            session_id = application.run(max_frames)
+        except KeyboardInterrupt:
+            typer.echo("Arrêt demandé.")
+            break
+        stats = application.stats()
+        typer.echo(
+            f"Session {session_id} terminée : {stats['frames']} images, "
+            f"{stats['mean_frame_ms']} ms/image en moyenne, max {stats['max_frame_ms']} ms."
+        )
+        if not keep_waiting:
+            break
 
 
 def _session_or_last(store: object, session: int | None) -> int:
@@ -470,6 +475,61 @@ def setup_guide(config: ConfigOpt = None) -> None:
     from simengineer.setup.guide import apply_guide
 
     typer.echo(apply_guide(_load(config).language))
+
+
+@app.command("measure-position")
+def measure_position(
+    config: ConfigOpt = None,
+    session: Annotated[int | None, typer.Option(help="Session (défaut : la dernière).")] = None,
+) -> None:
+    """Mesure la répétabilité de la position Lat/Lon sur les tours propres d'une session."""
+    from simengineer.store.db import Store
+    from simengineer.telemetry.position import measure_position_precision
+
+    cfg = _load(config)
+    store = Store(cfg.data_dir)
+    sid = _session_or_last(store, session)
+    grids = [store.load_grid(r.npz_path) for r in store.laps(sid, valid_only=True) if r.npz_path]
+    res = measure_position_precision(grids)
+    if not res.available:
+        typer.echo(
+            f"Mesure impossible : {res.laps} tour(s) propre(s) avec Lat/Lon (il en faut 2)."
+            " Si Lat/Lon sont absentes en direct, voir docs/irsdk_vars.md."
+        )
+        raise typer.Exit(1)
+    typer.echo(f"Tours propres comparés           : {res.laps}")
+    typer.echo(f"Pas de position le plus fin      : {res.quantization_m:.3f} m")
+    typer.echo(f"Dispersion tour à tour (médiane) : {res.median_spread_m:.2f} m")
+    typer.echo(f"Dispersion tour à tour (95 %)    : {res.p95_spread_m:.2f} m")
+    typer.echo(f"Dispersion maximale              : {res.max_spread_m:.2f} m")
+    typer.echo("La dispersion inclut tes écarts de trajectoire : borne haute de l'erreur du SDK.")
+
+
+@app.command("perf")
+def perf(
+    config: ConfigOpt = None,
+    source: SourceOpt = None,
+    ibt: Annotated[Path | None, typer.Option(help="Fichier .ibt (source ibt_replay).")] = None,
+    seconds: Annotated[float, typer.Option(help="Durée de la mesure.")] = 30.0,
+    check: Annotated[bool, typer.Option("--check", help="Code de sortie 1 hors budget.")] = False,
+    json_out: Annotated[
+        Path | None, typer.Option("--json", help="Écrit le résultat en JSON.")
+    ] = None,
+) -> None:
+    """Mesure CPU/RAM du collecteur en temps réel (budget : < 3 % d'un cœur, < 150 Mo)."""
+    import json
+
+    from simengineer.perf import measure, render
+
+    cfg = _load(config, source, ibt)
+    if cfg.source.kind == "synthetic" and not source:
+        cfg.source.scenario = "perf"
+    result = measure(cfg, seconds)
+    typer.echo(render(result))
+    if json_out:
+        json_out.write_text(json.dumps(result.to_dict(), indent=2), encoding="utf-8")
+    if check and not result.within_budget:
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":

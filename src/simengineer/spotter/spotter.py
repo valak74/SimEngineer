@@ -20,7 +20,8 @@ from simengineer.spotter import rules
 from simengineer.voice.arbiter import Priority, Utterance
 from simengineer.voice.templates import render
 
-_WINDOW = 15  # images (~0,25 s) pour estimer la vitesse des autres voitures
+_TRAFFIC_EVERY = 3  # le trafic est évalué à 20 Hz (les côtés et drapeaux restent à 60 Hz)
+_WINDOW = 5  # échantillons à 20 Hz (~0,25 s) pour estimer la vitesse des autres voitures
 
 
 class Spotter:
@@ -57,6 +58,7 @@ class Spotter:
         self._offtrack_t = -1e9
         # contexte pour l'arbitre
         self.in_battle = False
+        self._near = False
         self.alert_count = 0
 
     def close(self) -> None:
@@ -102,8 +104,9 @@ class Spotter:
         in_pits = f.on_pit_road or not f.is_on_track
         self._offtrack_step(f, stamp, out, in_pits)
         self._side_step(f, stamp, out, in_pits)
-        near = self._traffic_step(f, stamp, out, in_pits)
-        self.in_battle = rules.is_side_occupied(self._side) or near
+        if f.tick % _TRAFFIC_EVERY == 0:
+            self._near = self._traffic_step(f, stamp, out, in_pits)
+        self.in_battle = rules.is_side_occupied(self._side) or self._near
         return out
 
     def _flags_step(self, f: Frame, stamp: float | None, out: list[Utterance]) -> None:

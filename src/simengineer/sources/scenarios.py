@@ -76,7 +76,29 @@ def race() -> Scenario:
     )
 
 
+def perf() -> Scenario:
+    """Mesure de performance : 4 tours avec trafic dense (20 voitures) et un jaune."""
+    cars = tuple(
+        OtherCar(
+            idx=i + 1,
+            gap_m=-300.0 + 35.0 * i,
+            pace=0.97 + 0.003 * i,
+            side="left" if i % 2 else "right",
+        )
+        for i in range(20)
+    )
+    return Scenario(
+        n_laps=4,
+        session_type="Race",
+        race_laps=20,
+        others=cars,
+        flag_periods=((60.0, 90.0, int(Flags.YELLOW_WAVING)),),
+        base_style=lap_style(c2=CornerStyle(brake_offset_m=-12.0)),
+    )
+
+
 SCENARIOS: dict[str, Callable[[], Scenario]] = {
+    "perf": perf,
     "clean": clean,
     "stopped_car": stopped_car,
     "overtake": overtake,
