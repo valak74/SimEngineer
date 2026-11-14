@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import math
 import re
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Protocol
@@ -22,6 +23,9 @@ from simengineer.voice.templates import fmt_delta, fmt_lap_time, fmt_num, render
 
 class EngineerLike(Protocol):
     state: RaceState
+
+    @property
+    def pit_commands_available(self) -> bool: ...
 
     def set_pit_fuel(self, liters: float) -> str: ...
     def set_pit_tyres(self, change: bool) -> str: ...
@@ -53,6 +57,13 @@ class PitTyresArgs(_Args):
 
 
 @dataclass(frozen=True, slots=True)
+class PendingPitCommand:
+    kind: str  # "fuel" | "tyres"
+    value: float
+    expires_at: float
+
+
+@dataclass(frozen=True, slots=True)
 class ToolSpec:
     name: str
     description: str
@@ -78,10 +89,22 @@ def _r(value: float | None, decimals: int = 1) -> float | None:
 
 
 class ToolRegistry:
-    def __init__(self, engineer: EngineerLike, coach: CoachLike, lang: str = "fr") -> None:
+    def __init__(
+        self,
+        engineer: EngineerLike,
+        coach: CoachLike,
+        lang: str = "fr",
+        confirm: bool = True,
+        confirm_timeout_s: float = 20.0,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
         self._eng = engineer
         self._coach = coach
         self.lang = lang
+        self.confirm = confirm
+        self._timeout = confirm_timeout_s
+        self._clock = clock
+        self._pending: PendingPitCommand | None = None
         specs = [
             ToolSpec("get_fuel_status", "Carburant : litres, tours possibles, tours restants, "
                      "litres à ajouter, marge.", NoArgs, self._fuel),
@@ -277,11 +300,43 @@ class ToolRegistry:
         return out
 
     # --- écriture (commandes de stand, désactivées par défaut)
+    # Rien n'est envoyé au simulateur sans « oui » du pilote (si `confirm`) : une phrase mal
+    # transcrite ne peut pas changer le ravitaillement.
     def _set_fuel(self, args: PitFuelArgs) -> dict[str, Any]:
-        return {"say": self._eng.set_pit_fuel(args.liters)}
+        liters = math.ceil(args.liters)
+        if not self.confirm or not self._eng.pit_commands_available:
+            return {"say": self._eng.set_pit_fuel(liters)}
+        return self._stage("fuel", float(liters), self._say("pit_confirm_fuel", liters=liters))
 
     def _set_tyres(self, args: PitTyresArgs) -> dict[str, Any]:
-        return {"say": self._eng.set_pit_tyres(args.change)}
+        if not self.confirm or not self._eng.pit_commands_available:
+            return {"say": self._eng.set_pit_tyres(args.change)}
+        key = "pit_confirm_tyres_on" if args.change else "pit_confirm_tyres_off"
+        return self._stage("tyres", float(args.change), self._say(key))
+
+    def _stage(self, kind: str, value: float, question: str) -> dict[str, Any]:
+        self._pending = PendingPitCommand(kind, value, self._clock() + self._timeout)
+        return {"say": question, "awaiting_confirmation": True}
+
+    @property
+    def pending(self) -> PendingPitCommand | None:
+        if self._pending is not None and self._clock() > self._pending.expires_at:
+            self._pending = None  # trop tard : il faut redemander
+        return self._pending
+
+    def confirm_pending(self) -> str:
+        cmd = self.pending
+        self._pending = None
+        if cmd is None:
+            return self._say("pit_nothing")
+        if cmd.kind == "fuel":
+            return self._eng.set_pit_fuel(cmd.value)
+        return self._eng.set_pit_tyres(bool(cmd.value))
+
+    def cancel_pending(self) -> str:
+        had = self.pending is not None
+        self._pending = None
+        return self._say("pit_cancelled" if had else "pit_nothing")
 
 
 def _schema(model: type[_Args]) -> dict[str, Any]:

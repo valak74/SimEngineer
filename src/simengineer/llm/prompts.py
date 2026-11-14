@@ -11,7 +11,8 @@ Règles strictes :
   le pilotage, appelle d'abord l'outil correspondant. Le champ "say" d'un résultat est une
   phrase déjà prête : tu peux la reprendre ou la raccourcir, sans changer les chiffres.
 - Si un outil n'a pas de donnée, dis-le simplement. N'invente rien.
-- N'appelle set_pit_fuel ou set_pit_tyres que si le pilote le demande explicitement.
+- N'appelle set_pit_fuel ou set_pit_tyres que si le pilote le demande explicitement ;
+  le pilote devra ensuite confirmer par « oui ».
 - Pas de liste, pas de markdown, pas d'émoji : ta réponse est lue à voix haute."""
 
 SYSTEM_EN = """You are the driver's race engineer, on the radio while they drive in iRacing.
@@ -22,7 +23,8 @@ Strict rules:
   matching tool first. The "say" field of a result is a ready-made sentence: you may reuse or
   shorten it without changing the numbers.
 - If a tool has no data, just say so. Never make anything up.
-- Only call set_pit_fuel or set_pit_tyres when the driver explicitly asks for it.
+- Only call set_pit_fuel or set_pit_tyres when the driver explicitly asks for it;
+  the driver will then have to confirm with "yes".
 - No lists, no markdown, no emoji: your answer is read aloud."""
 
 REPORT_FR = """Tu es ingénieur de course. À partir du résumé JSON d'une session (déjà calculé),

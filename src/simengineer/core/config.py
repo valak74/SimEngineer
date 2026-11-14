@@ -80,6 +80,8 @@ class EngineerConfig(_Section):
     tyre_wear_warning_pct: float = 35.0
     track_temp_delta_c: float = 3.0
     pit_commands_enabled: bool = False
+    pit_confirm: bool = True  # commande de stand vocale : « je valide ? » puis « oui »
+    pit_confirm_timeout_s: float = 20.0
     long_yellow_min_s: float = 20.0
 
 

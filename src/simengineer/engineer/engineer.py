@@ -196,6 +196,10 @@ class RaceEngineer:
         return self._utt("lap_time_delta", "lap_time", 0.0, time=text_time, delta=delta)
 
     # --- commandes de stand (désactivées par défaut)
+    @property
+    def pit_commands_available(self) -> bool:
+        return not isinstance(self.commander, DisabledPitCommander)
+
     def set_pit_fuel(self, liters: float) -> str:
         res = self.commander.set_fuel(liters)
         return render(res.key, self.lang, **res.params)

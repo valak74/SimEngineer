@@ -278,17 +278,60 @@ def test_local_mode_intents(race_app: SimEngineerApp, question: str, tool: str) 
 
 def test_local_mode_pit_commands_and_unknown(race_app: SimEngineerApp) -> None:
     eng = make_dialogue_engine(race_app, use_env=False)
+    # Désactivées : réponse immédiate, rien n'est mis en attente
     assert eng.answer("Mets 20 litres au stand").text.startswith("Commandes de stand désactivées")
+    assert eng.tools.pending is None
+    assert eng.answer("oui").text == "Rien à valider"
     assert eng.answer("Raconte-moi une blague").text == "Je n'ai pas compris, répète s'il te plaît"
     assert eng.answer("   ").source == "local:vide"
     assert race_app.engineer is not None
     rec = RecordingPitCommander()
     race_app.engineer.commander = rec
     try:
-        assert eng.answer("Ajoute 17,5 litres").text == "Stand réglé : 18 litres"
-        assert eng.answer("Pas de pneus au prochain arrêt").text == "Stand réglé : pas de pneus"
-        assert eng.answer("Change les pneus").text == "Stand réglé : changement de pneus"
-        assert rec.commands == [("fuel", 18.0), ("tyres", 0.0), ("tyres", 1.0)]
+        assert eng.answer("Ajoute 17,5 litres").text == "18 litres au prochain arrêt, je valide ?"
+        assert rec.commands == []  # rien n'est envoyé avant le « oui »
+        res = eng.answer("Oui")
+        assert res.text == "Stand réglé : 18 litres" and res.source == "local:confirmation"
+        assert eng.answer("Pas de pneus au prochain arrêt").text.startswith("Pas de pneus")
+        assert eng.answer("non").text == "Annulé, rien n'est changé"
+        assert eng.answer("Change les pneus").text == "Changement des quatre pneus, je valide ?"
+        assert eng.answer("ouais vas-y").text == "Stand réglé : changement de pneus"
+        assert rec.commands == [("fuel", 18.0), ("tyres", 1.0)]
+    finally:
+        race_app.engineer.commander = DisabledPitCommander()
+
+
+def test_pit_confirmation_expires_and_can_be_disabled(race_app: SimEngineerApp) -> None:
+    assert race_app.engineer is not None
+    rec = RecordingPitCommander()
+    race_app.engineer.commander = rec
+    now = [0.0]
+    try:
+        tools = ToolRegistry(race_app.engineer, race_app.coach, "fr", True, 20.0, lambda: now[0])
+        eng = DialogueEngine(tools, None, race_app.cfg.llm, "fr")
+        eng.answer("mets 30 litres")
+        now[0] = 25.0  # trop tard
+        assert eng.answer("oui").text == "Rien à valider" and rec.commands == []
+        direct = ToolRegistry(race_app.engineer, race_app.coach, "fr", confirm=False)
+        assert direct.execute("set_pit_fuel", {"liters": 12}).say == "Stand réglé : 12 litres"
+        assert rec.commands == [("fuel", 12.0)]
+    finally:
+        race_app.engineer.commander = DisabledPitCommander()
+
+
+def test_llm_pit_command_asks_confirmation_verbatim(race_app: SimEngineerApp) -> None:
+    assert race_app.engineer is not None
+    rec = RecordingPitCommander()
+    race_app.engineer.commander = rec
+    try:
+        client = FakeClient(call("set_pit_fuel", '{"liters": 22}'), text("ne sera pas lu"))
+        eng, _ = engine(race_app, client)
+        res = eng.answer("mets vingt-deux litres")
+        assert res.text == "22 litres au prochain arrêt, je valide ?" and len(client.calls) == 1
+        assert rec.commands == []
+        confirm = eng.answer("oui")  # traité localement, sans appel au LLM
+        assert confirm.text == "Stand réglé : 22 litres" and len(client.calls) == 1
+        assert rec.commands == [("fuel", 22.0)]
     finally:
         race_app.engineer.commander = DisabledPitCommander()
 

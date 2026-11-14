@@ -34,6 +34,7 @@ stopped_alert_distance_m = 400.0
 fuel_margin_laps = 1.0
 fuel_window_laps = 5
 pit_commands_enabled = false   # RÈGLE 1 : écritures SDK désactivées par défaut
+pit_confirm = true         # commande vocale : « 20 litres, je valide ? » puis « oui »
 
 [coach]
 enabled = true

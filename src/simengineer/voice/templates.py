@@ -71,6 +71,20 @@ TEMPLATES: dict[str, tuple[str, str]] = {
         "Commandes de stand désactivées dans la configuration",
         "Pit commands are disabled in the configuration",
     ),
+    "pit_confirm_fuel": (
+        "{liters} litres au prochain arrêt, je valide ?",
+        "{liters} liters at the next stop, confirm?",
+    ),
+    "pit_confirm_tyres_on": (
+        "Changement des quatre pneus, je valide ?",
+        "Change all four tyres, confirm?",
+    ),
+    "pit_confirm_tyres_off": (
+        "Pas de pneus au prochain arrêt, je valide ?",
+        "No tyres at the next stop, confirm?",
+    ),
+    "pit_cancelled": ("Annulé, rien n'est changé", "Cancelled, nothing changed"),
+    "pit_nothing": ("Rien à valider", "Nothing to confirm"),
     "pit_cmd_fuel": ("Stand réglé : {liters} litres", "Pit set: {liters} liters"),
     "pit_cmd_tyres_on": ("Stand réglé : changement de pneus", "Pit set: tyre change"),
     "pit_cmd_tyres_off": ("Stand réglé : pas de pneus", "Pit set: no tyres"),

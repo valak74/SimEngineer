@@ -53,6 +53,12 @@ _TYRES_OFF = re.compile(
     r"\b(pas de pneus?|sans pneus?|garde les pneus?|no tyres?|no tires?|keep (the )?tyres?)", re.I
 )
 _TYRES_ON = re.compile(r"\b(change[rz]?|chang(e|ing)|new|neufs?)\b.*\b(pneus?|tyres?|tires?)", re.I)
+_YES = re.compile(
+    r"^\W*(oui|ouais|ok|okay|valide|je valide|confirme|confirmé|vas-y|go|yes|yeah|confirm|"
+    r"do it)\b[\W\w]{0,12}$",
+    re.I,
+)
+_NO = re.compile(r"^\W*(non|annule|annuler|laisse tomber|stop|no|cancel|forget it)\b", re.I)
 _CORNER = re.compile(r"\b(?:virage|turn|corner|t)\s*0?(\d{1,2})\b", re.I)
 
 
@@ -100,6 +106,11 @@ class DialogueEngine:
         question = question.strip()
         if not question:
             return DialogueResult(self._sorry(), "local:vide")
+        # Réponse à « je valide ? » : traitée localement, jamais par le LLM.
+        if _YES.match(question):
+            return DialogueResult(self.tools.confirm_pending(), "local:confirmation", ["confirm"])
+        if _NO.match(question) and self.tools.pending is not None:
+            return DialogueResult(self.tools.cancel_pending(), "local:confirmation", ["cancel"])
         if self.chain is None or not self.cfg.enabled:
             return self.local_answer(question)
         try:
@@ -153,6 +164,9 @@ class DialogueEngine:
                     )
                 if invalid_calls > 1:  # une seule relance pour un appel mal formé
                     return self._fallback(question, outcomes, "appel_outil_invalide")
+                staged = [o for o in outcomes if o.data.get("awaiting_confirmation")]
+                if staged:  # question de confirmation : dite telle quelle, pas reformulée
+                    return DialogueResult(staged[-1].say, f"llm:{self.chain.last_provider}", used)
                 continue
             text = (res.content or "").strip()
             if not text:

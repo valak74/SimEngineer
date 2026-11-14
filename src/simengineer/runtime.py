@@ -34,7 +34,10 @@ def make_dialogue_engine(
     if chain is None and use_env:
         budget = DailyBudget(cfg.data_dir / "llm_budget.json", cfg.llm.daily_budget_usd)
         chain = build_chain(cfg.llm, budget)
-    tools = ToolRegistry(app.engineer, app.coach, cfg.language)
+    tools = ToolRegistry(
+        app.engineer, app.coach, cfg.language,
+        cfg.engineer.pit_confirm, cfg.engineer.pit_confirm_timeout_s,
+    )  # fmt: skip
     return DialogueEngine(tools, chain, cfg.llm, cfg.language)
 
 
