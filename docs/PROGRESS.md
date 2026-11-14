@@ -3,7 +3,7 @@
 | Phase | État | Notes |
 |---|---|---|
 | 0 Socle | fait | config, logging, VARS, CLI, docs |
-| 1 Sources et tours | à faire | |
+| 1 Sources et tours | fait | synthetic, ibt_replay (lecteur .ibt maison, aller-retour testé), live (non testé sans iRacing) ; tours, validité, grille 1 m, SQLite + NPZ |
 | 2 Parole | à faire | |
 | 3 Spotter | à faire | |
 | 4 Ingénieur | à faire | |
