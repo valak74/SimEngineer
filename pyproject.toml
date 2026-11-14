@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "simengineer"
+version = "0.1.0"
+description = "Ingénieur de course IA local pour iRacing (spotter, carburant, coach, dialogue vocal)"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=1.26",
+    "pydantic>=2.6",
+    "typer>=0.12",
+]
+
+[project.optional-dependencies]
+# Windows uniquement : accès mémoire partagée iRacing (import paresseux).
+live = ["pyirsdk>=1.3.5"]
+llm = ["openai>=1.40"]
+voice = ["piper-tts>=1.2", "sounddevice>=0.4.6", "faster-whisper>=1.0", "keyboard>=0.13", "pygame>=2.5"]
+perf = ["psutil>=5.9"]
+dev = ["pytest>=8", "ruff>=0.5", "mypy>=1.10", "psutil>=5.9", "openai>=1.40"]
+
+[project.scripts]
+simengineer = "simengineer.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+simengineer = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003", "B008"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+files = ["src"]
+
+[[tool.mypy.overrides]]
+module = ["irsdk", "piper", "piper.*", "sounddevice", "faster_whisper", "keyboard", "pygame", "psutil", "openai", "openai.*"]
+ignore_missing_imports = true

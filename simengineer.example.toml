@@ -1,0 +1,58 @@
+# Copier en simengineer.toml (ou simengineer.local.toml, ignoré par git) et adapter.
+# Toute valeur peut aussi être surchargée par variable d'environnement :
+#   SIMENGINEER__SECTION__CLE=valeur   (ex. SIMENGINEER__SOURCE__KIND=live)
+# Les clés d'API ne vont JAMAIS ici : variables d'environnement ou fichier .env (ignoré par git).
+
+language = "fr"            # "fr" ou "en"
+data_dir = "data"
+
+[source]
+kind = "synthetic"         # "live" | "ibt_replay" | "synthetic"
+ibt_path = ""              # pour ibt_replay
+realtime = true            # false = rejoue aussi vite que possible
+scenario = "race"          # scénario synthétique
+
+[voice]
+tts_backend = "piper"      # "piper" | "null"
+piper_voice_fr = "models/fr_FR-siwis-medium.onnx"
+piper_voice_en = "models/en_US-lessac-medium.onnx"
+output_device = ""         # nom (ou index) du périphérique ; vide = défaut système
+input_device = ""
+stt_backend = "faster_whisper"
+stt_model = "small"
+ptt_kind = "keyboard"      # "keyboard" | "joystick" | "none"
+ptt_key = "f13"
+ptt_joystick_index = 0
+ptt_button = 0
+
+[spotter]
+enabled = true
+stopped_alert_distance_m = 400.0
+
+[engineer]
+fuel_margin_laps = 1.0
+fuel_window_laps = 5
+pit_commands_enabled = false   # RÈGLE 1 : écritures SDK désactivées par défaut
+
+[coach]
+enabled = true
+max_advice = 2
+
+[llm]
+enabled = true             # false = mode "tout local" (gabarits uniquement)
+timeout_s = 8.0
+daily_budget_usd = 0.50
+
+[[llm.providers]]
+name = "qwen"
+base_url = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+model = "qwen-flash"
+report_model = "qwen-plus"
+api_key_env = "DASHSCOPE_API_KEY"
+
+[[llm.providers]]
+name = "deepseek"
+base_url = "https://api.deepseek.com"
+model = "deepseek-v4-flash"
+report_model = "deepseek-v4-flash"
+api_key_env = "DEEPSEEK_API_KEY"
