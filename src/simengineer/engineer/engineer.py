@@ -7,6 +7,7 @@ instantané `RaceState` que les outils du LLM lisent (le LLM ne calcule rien).
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from typing import Any
 
@@ -19,6 +20,7 @@ from simengineer.engineer.fuel_save import FuelSavePlan, plan_fuel_save
 from simengineer.engineer.gaps import Gaps, compute_gaps
 from simengineer.engineer.pit import PitWindow, pit_window
 from simengineer.engineer.pit_commands import DisabledPitCommander, PitCommander
+from simengineer.engineer.race import History, RaceMonitor, RaceStatus
 from simengineer.engineer.tyres import TyreModel, TyreStatus
 from simengineer.engineer.weather import WeatherMonitor, WeatherStatus
 from simengineer.telemetry.laps import Lap
@@ -44,6 +46,7 @@ class RaceState:
     valid_laps: int = 0
     under_yellow: bool = False
     fuel_save: FuelSavePlan | None = None
+    race: RaceStatus = field(default_factory=RaceStatus)
 
 
 class RaceEngineer:
@@ -66,6 +69,11 @@ class RaceEngineer:
         self._yellow_since: float | None = None
         self._said: set[str] = set()  # annonces uniques (par arrêt / par neutralisation)
         self._last_frame: Frame | None = None
+        self.race = RaceMonitor(
+            info, lang, None, lambda: self.state.best_lap_time,
+            margin_laps=cfg.fuel_margin_laps, reserve_l=cfg.fuel_reserve_l,
+        )  # fmt: skip
+        self.state.race = self.race.status
         self._save_base: GridLap | None = None  # tour à l'attaque ayant servi au plan
         self._save_target_lap: float | None = None
         self._save_misses = 0
@@ -81,14 +89,20 @@ class RaceEngineer:
         return fmt_num(value, decimals, self.lang)
 
     # --- boucle
+    def set_history(self, history: History | None) -> None:
+        self.race.history = history
+
+    def set_live_delta(self, provider: Callable[[], float | None]) -> None:
+        self.race._live_delta = provider
+
     def on_frame(self, f: Frame) -> list[Utterance]:
-        """À appeler à chaque image ; ne travaille qu'une fois par seconde."""
+        """À appeler à chaque image ; calculs lourds une fois par seconde seulement."""
         self._last_frame = f
+        out: list[Utterance] = self.race.on_frame(f)
         second = int(f.session_time)
         if second == self._last_second and f.slow is None:
-            return []
+            return out
         self._last_second = second
-        out: list[Utterance] = []
         st = self.state
         st.lap = f.lap
         fcy = bool(f.session_flags & FULL_COURSE_YELLOW_MASK)
@@ -147,6 +161,9 @@ class RaceEngineer:
         if lap.complete and not lap.pit:
             out.append(self._lap_time_call(lap))
         out += self._fuel_save_check(lap)
+        out += self.race.on_lap(lap, self._last_frame)
+        if self.race.status.finished:
+            return out  # course terminée : seul le débrief compte
         f = self._last_frame
         if f is None:
             return out

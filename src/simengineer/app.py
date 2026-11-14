@@ -7,6 +7,7 @@ basse priorité ; le dialogue vocal vit dans son propre thread.
 
 from __future__ import annotations
 
+import statistics
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -29,6 +30,7 @@ from simengineer.core.log import get_logger
 from simengineer.core.types import Frame, SessionInfo
 from simengineer.engineer.engineer import RaceEngineer
 from simengineer.engineer.pit_commands import make_pit_commander
+from simengineer.engineer.race import History
 from simengineer.sources.base import TelemetrySource
 from simengineer.spotter.spotter import Spotter
 from simengineer.store.db import Store
@@ -84,6 +86,8 @@ class SimEngineerApp:
         self.engineer: RaceEngineer | None = None
         self.spotter: Spotter | None = None
         self.coach_cfg = cfg.coach
+        self._delta_ref: GridLap | None = None
+        self._delta: Any = None
         self.frames = 0
         self.max_frame_ms = 0.0
         self.total_frame_s = 0.0
@@ -131,6 +135,9 @@ class SimEngineerApp:
         if known:
             self.coach.corners = known
         self._select_reference()
+        self.add_frame_hook(self._delta_frame)
+        self.engineer.set_history(self._history())
+        self.engineer.set_live_delta(lambda: self.coach.delta_s)
         if cfg.coach.training_mode:
             self._init_training()
         self.bus.publish(SessionStarted(self.info, self.session_id))
@@ -152,16 +159,38 @@ class SimEngineerApp:
             self.coach.reference_label = row.label
             self.coach.reference_is_imported = True
             self._remember_reference()
+            log.info("Référence : %s (%.3f s)", row.label, grid.lap_time)
+
+    def _delta_frame(self, f: Frame) -> None:
+        """Delta temps réel contre la référence courante (importée ou meilleur tour)."""
+        ref = self.coach.reference
+        if ref is None:
+            return
+        if ref is not self._delta_ref:
             from simengineer.reference.delta import LiveDelta
 
-            delta = LiveDelta(grid)
-            coach = self.coach
+            self._delta_ref = ref
+            self._delta = LiveDelta(ref)
+        assert self._delta is not None
+        self.coach.delta_s = self._delta.update(f)
 
-            def on_frame(f: Frame) -> None:
-                coach.delta_s = delta.update(f)
-
-            self.add_frame_hook(on_frame)
-            log.info("Référence : %s (%.3f s)", row.label, grid.lap_time)
+    def _history(self) -> History | None:
+        """Conso et temps au tour moyens de tes séances précédentes (même circuit/voiture)."""
+        fuel, times = [], []
+        for s in self.store.sessions(track=self.info.track_name, car=self.info.car_name):
+            if s.id == self.session_id:
+                continue
+            for r in self.store.laps(s.id, valid_only=True):
+                times.append(r.lap_time)
+                if r.fuel_used and r.fuel_used > 0:
+                    fuel.append(r.fuel_used)
+        if not times:
+            return None
+        return History(
+            fuel_per_lap_l=statistics.median(fuel) if fuel else None,
+            lap_time_s=statistics.median(times),
+            laps=len(times),
+        )
 
     # --- mode entraînement
     def _init_training(self) -> None:

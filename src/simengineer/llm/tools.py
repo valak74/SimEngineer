@@ -275,8 +275,22 @@ class ToolRegistry:
 
     def _gap(self, _: NoArgs) -> dict[str, Any]:
         g = self._eng.state.gaps
+        race = getattr(self._eng.state, "race", None)
         ahead, behind = _r(g.ahead_s), _r(g.behind_s)
         out: dict[str, Any] = {"ahead_s": ahead, "behind_s": behind}
+        if race is not None and race.position is not None:
+            # Classement officiel : écarts au classement plutôt qu'en piste.
+            if race.gap_ahead_s is not None or race.gap_behind_s is not None:
+                ahead, behind = _r(race.gap_ahead_s), _r(race.gap_behind_s)
+                out.update(ahead_s=ahead, behind_s=behind, basis="standings")
+            out.update(
+                position=race.position,
+                positions_gained=race.gained,
+                ahead_trend_s_per_lap=_r(race.ahead_rate_s, 2),
+                behind_trend_s_per_lap=_r(race.behind_rate_s, 2),
+                incidents=race.incidents,
+                incident_limit=race.incident_limit,
+            )
         if ahead is None and behind is None:
             out["say"] = self._say("gap_none")
         elif behind is None:

@@ -81,6 +81,59 @@ TEMPLATES: dict[str, tuple[str, str]] = {
         "Carburant suffisant jusqu'à l'arrivée, tu peux attaquer",
         "Fuel is good to the end, you can push",
     ),
+    # --- course : incidents, stands, position, écarts, briefing, débrief
+    "incident": ("Incident : {total} sur {limit}", "Incident: {total} of {limit}"),
+    "incident_nolimit": ("Incident : {total} au total", "Incident: {total} total"),
+    "incident_warning": (
+        "Attention, plus que {left} points avant la disqualification",
+        "Careful, {left} points left before disqualification",
+    ),
+    "pit_lane_limit": ("Voie des stands, limite {kmh}", "Pit lane, limit {kmh}"),
+    "pit_speeding": ("Vitesse dans les stands !", "Pit lane speeding!"),
+    "position_gain": ("P{pos}, tu gagnes {n} place{s}", "P{pos}, up {n} place{s}"),
+    "position_loss": ("P{pos}, tu perds {n} place{s}", "P{pos}, down {n} place{s}"),
+    "gap_closing_ahead": (
+        "Devant à {gap}, tu reprends {rate} par tour",
+        "Car ahead {gap}, you gain {rate} a lap",
+    ),
+    "gap_closing_behind": (
+        "Derrière à {gap}, il reprend {rate} par tour",
+        "Car behind {gap}, he gains {rate} a lap",
+    ),
+    "laps_to_go": ("Plus que {laps} tours", "{laps} laps to go"),
+    "minutes_to_go": ("Plus que {min} minutes", "{min} minutes to go"),
+    "briefing_laps": ("Course de {laps} tours.", "{laps} lap race."),
+    "briefing_time": (
+        "Course de {min} minutes, environ {laps} tours.",
+        "{min} minute race, about {laps} laps.",
+    ),
+    "briefing_fuel": (
+        "Il faut environ {need} litres, tu en as {have} : {verdict}.",
+        "You need about {need} liters, you have {have}: {verdict}.",
+    ),
+    "briefing_nofuel": (
+        "Pas encore de conso connue sur ce circuit.",
+        "No fuel data on this track yet.",
+    ),
+    "briefing_incidents": ("Limite d'incidents {limit}.", "Incident limit {limit}."),
+    "verdict_enough": ("assez pour finir", "enough to finish"),
+    "verdict_save": ("il faudra économiser un peu", "you will need to save a little"),
+    "verdict_stop": ("un arrêt sera nécessaire", "you will need to stop"),
+    "debrief": (
+        "Course terminée, P{pos}{gain}. Meilleur tour {best}. {inc} points d'incident.",
+        "Race over, P{pos}{gain}. Best lap {best}. {inc} incident points.",
+    ),
+    "debrief_gain": (", {n} place{s} gagnée{s}", ", up {n} place{s}"),
+    "debrief_loss": (", {n} place{s} perdue{s}", ", down {n} place{s}"),
+    # --- qualification
+    "quali_outlap": (
+        "Tour de lancement : chauffe pneus et freins",
+        "Out lap: warm up tyres and brakes",
+    ),
+    "quali_flying": ("Tour lancé", "Flying lap"),
+    "quali_sector": ("Secteur {n}, {delta}", "Sector {n}, {delta}"),
+    "quali_sector_even": ("Secteur {n}, dans le temps", "Sector {n}, on the pace"),
+    "quali_cooldown": ("Tour de décélération, garde du rythme", "Cool-down lap"),
     "pit_window_open": (
         "Fenêtre de stand ouverte, ajoute {liters} litres",
         "Pit window open, add {liters} liters",
