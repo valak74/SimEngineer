@@ -343,7 +343,19 @@ def generate(sc: Scenario) -> RawSession:
     n_right = np.zeros(n_frames, dtype=np.int64)
     for car in sc.others:
         t_car = time if car.stop_at_s is None else np.minimum(time, car.stop_at_s)
-        s_car = np.interp(t_car * car.pace, t_all, s_all) + car.gap_m
+        if car.pace == 0.0:
+            s_car = np.full(n_frames, car.gap_m)
+        else:
+            # Décalage en temps (et non en distance) : la voiture suit le même profil de
+            # vitesse le long de la piste, sans effet d'accordéon artificiel.
+            lap0 = profiles[0].lap_time
+            t_gap = float(np.interp(car.gap_m % length, s_all, t_all))
+            if car.gap_m < 0:
+                t_gap -= lap0
+            tt = t_car * car.pace + t_gap
+            s_car = np.where(
+                tt >= 0, np.interp(tt, t_all, s_all), np.interp(tt + lap0, t_all, s_all) - length
+            )
         car_pct[:, car.idx] = (s_car % length) / length
         surf = np.full(n_frames, int(TrackSurface.ON_TRACK), dtype=np.int64)
         if car.stop_at_s is not None:
@@ -398,6 +410,14 @@ def generate(sc: Scenario) -> RawSession:
     )
     meta = {s.name: (s.unit, "synthétique") for s in VARS.values()}
     return RawSession(info=info, columns=cols, tick_rate=TICK_RATE, var_meta=meta)
+
+
+def gap_for_distance_at(track: TrackDef, t: float, distance_m: float) -> float:
+    """`gap_m` initial pour qu'une voiture (pace 1) soit `distance_m` devant à l'instant t."""
+    p = build_lap_profile(track)
+    s_t = float(np.interp(t, p.t[:-1], p.s))
+    t_gap = float(np.interp(s_t + distance_m, p.s, p.t[:-1])) - t
+    return float(np.interp(t_gap, p.t[:-1], p.s))
 
 
 class SyntheticSource(RawSessionSource):

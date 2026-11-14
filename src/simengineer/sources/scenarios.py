@@ -11,6 +11,7 @@ from simengineer.sources.synthetic import (
     OtherCar,
     Scenario,
     build_lap_profile,
+    gap_for_distance_at,
     lap_style,
 )
 
@@ -23,8 +24,9 @@ def clean() -> Scenario:
 
 
 def stopped_car() -> Scenario:
-    """Voiture arrêtée en piste à 1250 m de la ligne (300 m devant quand le pilote est à 950 m)."""
-    return Scenario(n_laps=2, others=(OtherCar(idx=5, gap_m=1250.0, pace=0.0),))
+    """Une voiture roule 300 m devant le pilote puis s'arrête net en piste à t = 10 s."""
+    gap = gap_for_distance_at(DEFAULT_TRACK, 10.0, 300.0)
+    return Scenario(n_laps=2, others=(OtherCar(idx=5, gap_m=gap, pace=1.0, stop_at_s=10.0),))
 
 
 def overtake() -> Scenario:
