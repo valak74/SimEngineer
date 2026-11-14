@@ -20,7 +20,9 @@ class DailyBudget:
         self._spent: dict[str, float] = {}
         if path is not None and path.is_file():
             try:
-                self._spent = {k: float(v) for k, v in json.loads(path.read_text()).items()}
+                self._spent = {
+                    k: float(v) for k, v in json.loads(path.read_text(encoding="utf-8")).items()
+                }
             except (ValueError, OSError):
                 self._spent = {}
 
@@ -40,5 +42,5 @@ class DailyBudget:
         self._spent = {key: self._spent.get(key, 0.0) + cost}  # on ne garde que le jour courant
         if self._path is not None:
             self._path.parent.mkdir(parents=True, exist_ok=True)
-            self._path.write_text(json.dumps(self._spent))
+            self._path.write_text(json.dumps(self._spent), encoding="utf-8")
         return cost
