@@ -220,6 +220,8 @@ svg.track .me { fill: #fff; stroke: var(--accent); stroke-width: 5; filter: drop
 .advice li { display: grid; grid-template-columns: 54px 1fr auto; gap: 12px; align-items: center; padding: 10px 12px; background: var(--panel-2); border: 1px solid var(--line); }
 .advice .cn { font-size: 20px; font-weight: 700; color: var(--accent); letter-spacing: 0.04em; }
 .advice .gain { font-variant-numeric: tabular-nums; color: var(--ok); font-weight: 700; white-space: nowrap; }
+.training { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 0; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px dashed var(--line); }
+.training .chip { text-transform: none; letter-spacing: 0.04em; font-size: 12px; }
 .empty { color: var(--dim); font-size: 13px; letter-spacing: 0.06em; padding: 8px 0; }
 
 /* tableaux */

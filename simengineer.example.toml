@@ -38,6 +38,8 @@ pit_commands_enabled = false   # RÈGLE 1 : écritures SDK désactivées par dé
 [coach]
 enabled = true
 max_advice = 2
+training_mode = false      # rappel vocal AVANT les virages ciblés (ou : run --training)
+callout_lead_s = 3.5       # secondes avant le point de freinage de la référence
 
 [ui]
 enabled = true             # interface locale dans le navigateur

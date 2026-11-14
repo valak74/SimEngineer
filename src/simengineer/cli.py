@@ -147,6 +147,10 @@ def run(
     ui: Annotated[
         bool | None, typer.Option("--ui/--no-ui", help="Interface dans le navigateur.")
     ] = None,
+    training: Annotated[
+        bool,
+        typer.Option("--training", help="Mode entraînement : rappel avant les virages ciblés."),
+    ] = False,
     keep_ui: Annotated[
         bool, typer.Option("--keep-ui", help="Garder l'interface ouverte après la session.")
     ] = False,
@@ -163,6 +167,8 @@ def run(
         cfg.source.speed = speed
     if ui is not None:
         cfg.ui.enabled = ui
+    if training:
+        cfg.coach.training_mode = True
     if null_voice:
         cfg.voice.tts_backend = "null"
         cfg.voice.ptt_kind = "none"

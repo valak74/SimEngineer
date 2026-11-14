@@ -140,6 +140,18 @@ TEMPLATES: dict[str, tuple[str, str]] = {
         "Turn {n}, fewer steering corrections",
     ),
     "adv_none": ("Bon tour, continue comme ça", "Good lap, keep it up"),
+    # Rappels du mode entraînement (≤ 8 mots), dits dans la ligne droite d'approche
+    "call_braking": ("Virage {n}, attaque franche au freinage", "Turn {n}, firm brake hit"),
+    "call_trail": ("Virage {n}, relâche le frein progressivement", "Turn {n}, trail off gently"),
+    "call_min_speed": ("Virage {n}, porte plus de vitesse", "Turn {n}, carry more speed"),
+    "call_throttle": ("Virage {n}, gaz tôt et progressifs", "Turn {n}, early smooth throttle"),
+    "call_smoothness": ("Virage {n}, un seul coup de volant", "Turn {n}, one steering input"),
+    "call_consistency": ("Virage {n}, mêmes repères", "Turn {n}, same markers"),
+    "call_good": ("Virage {n}, c'était bien, pareil", "Turn {n}, good, same again"),
+    "training_on": (
+        "Mode entraînement : {theme}, virages {corners}",
+        "Training mode: {theme}, turns {corners}",
+    ),
     "delta_ref": ("{delta} sur la référence", "{delta} to reference"),
     # --- Version détaillée des conseils (rapports, écran)
     "advl_brake_later": (

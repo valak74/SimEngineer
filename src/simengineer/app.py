@@ -12,6 +12,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from simengineer.coach.callouts import CornerCallouts, callout_points, training_focus
 from simengineer.coach.corners import Corner
 from simengineer.coach.pipeline import (
     LapAnalysis,
@@ -50,6 +51,7 @@ class CoachState:
     reference_is_imported: bool = False
     last_analysis: LapAnalysis | None = None
     delta_s: float | None = None  # delta temps réel par rapport à la référence
+    training: CornerCallouts | None = None  # mode entraînement (rappels avant virage)
 
 
 def trackmap_key(track: str) -> str:
@@ -132,6 +134,8 @@ class SimEngineerApp:
         if stored:
             self.coach.corners = [Corner.from_dict(c) for c in stored]
         self._select_reference()
+        if cfg.coach.training_mode:
+            self._init_training()
         self.bus.publish(SessionStarted(self.info, self.session_id))
         for hook in self._ready_hooks:
             hook()
@@ -161,6 +165,72 @@ class SimEngineerApp:
 
             self.add_frame_hook(on_frame)
             log.info("Référence : %s (%.3f s)", row.label, grid.lap_time)
+
+    # --- mode entraînement
+    def _init_training(self) -> None:
+        """Thème et virages ciblés : programme d'entraînement du pilote pour ce circuit."""
+        from simengineer.coach.profile import build_profile
+        from simengineer.coach.training import build_plan
+
+        profile = build_profile(self.store, self.info.track_name, self.info.car_name)
+        self._training_theme = "braking"
+        self._training_focus: list[int] = []
+        if profile is not None:
+            plan = build_plan(profile, self.cfg.language)
+            self._training_theme = plan.theme
+            weak = [c.corner for c in profile.weaknesses]
+            self._training_focus = training_focus(
+                plan.focus_corners, weak, None, self.cfg.coach.callout_max_corners
+            )
+        self._training_ref: GridLap | None = None
+        self._training_announced = False
+        self.add_frame_hook(self._training_frame)
+        self._refresh_training()
+
+    def _refresh_training(self) -> None:
+        """(Re)construit les points de rappel quand la référence ou les virages changent."""
+        coach, cfg = self.coach, self.cfg.coach
+        ref = coach.reference
+        if ref is None or not coach.corners:
+            return
+        if not self._training_focus and coach.last_analysis is not None:
+            self._training_focus = training_focus(
+                [], [], coach.last_analysis, cfg.callout_max_corners
+            )
+            if coach.last_analysis.advice:
+                from simengineer.coach.advice import ISSUE_THEME
+
+                self._training_theme = ISSUE_THEME[coach.last_analysis.advice[0].issue]
+        if not self._training_focus:
+            return
+        if coach.training is None:
+            coach.training = CornerCallouts(
+                [], self.info.track_length_m, self._training_focus, self._training_theme,
+                self.cfg.language,
+            )  # fmt: skip
+        if ref is not self._training_ref:
+            self._training_ref = ref
+            coach.training.set_points(callout_points(ref, coach.corners, self.coach_cfg))
+            coach.training.set_focus(self._training_focus, self._training_theme)
+        if not self._training_announced and coach.training.active_corners:
+            self._training_announced = True
+            from simengineer.coach.report import theme_label
+            from simengineer.voice.arbiter import Priority
+            from simengineer.voice.templates import render
+
+            corners = ", ".join(str(c) for c in coach.training.active_corners)
+            text = render(
+                "training_on", self.cfg.language,
+                theme=theme_label(self._training_theme, self.cfg.language).lower(),
+                corners=corners,
+            )  # fmt: skip
+            self.arbiter.submit(Utterance(Priority.P1, "training_on", text, ttl_s=30.0))
+
+    def _training_frame(self, f: Frame) -> None:
+        training = self.coach.training
+        if training is not None:
+            for utt in training.on_frame(f):
+                self.arbiter.submit(utt)
 
     def _remember_reference(self) -> None:
         ref = self.coach.reference
@@ -244,9 +314,6 @@ class SimEngineerApp:
         if res.analysis is not None:
             coach.last_analysis = res.analysis
             self.store.add_corner_results(self.session_id, lap_id, corner_rows(res.analysis))
-            if announce and self.cfg.coach.enabled:
-                for utt in debrief_utterances(res.analysis, self.coach_cfg):
-                    self.arbiter.submit(utt)
         if lap.valid and not coach.reference_is_imported:
             # Sans référence importée : le meilleur tour de la séance sert de référence.
             ref = coach.reference
@@ -256,6 +323,18 @@ class SimEngineerApp:
                     "meilleur tour de la séance" if self.cfg.language == "fr" else "session best"
                 )
                 self._remember_reference()
+        if self.cfg.coach.training_mode:
+            self._refresh_training()
+            if coach.training is not None and res.analysis is not None:
+                coach.training.update_from_analysis(res.analysis)
+        if res.analysis is not None and announce and self.cfg.coach.enabled:
+            # En entraînement, les virages ciblés sont rappelés AVANT le virage : le débrief
+            # ne les répète pas.
+            focus = coach.training.active_corners if coach.training else []
+            skip = tuple(f"adv:T{c:02d}:" for c in focus)
+            for utt in debrief_utterances(res.analysis, self.coach_cfg):
+                if not (skip and utt.key.startswith(skip)):
+                    self.arbiter.submit(utt)
         self.bus.publish(LapCompleted(lap, lap_id))
 
     def _finish(self) -> None:

@@ -96,6 +96,11 @@ class CoachConfig(_Section):
     throttle_pickup_m: float = 6.0
     exit_speed_kmh: float = 3.0
     steering_corrections: int = 2
+    # Mode entraînement : rappel vocal avant les virages ciblés
+    training_mode: bool = False
+    callout_lead_s: float = 3.5  # secondes avant le point de freinage de la référence
+    callout_min_straight_s: float = 2.0  # ligne droite plus courte : pas de rappel
+    callout_max_corners: int = 3
     # Détection de virages
     corner_lat_accel_ms2: float = 4.0
     corner_min_length_m: float = 25.0

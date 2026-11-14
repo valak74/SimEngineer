@@ -214,6 +214,21 @@ function renderLive(snap) {
       : [h("li", { class: "empty", style: "display:block;border:0;background:none" }, adv ? "Tour propre, rien à signaler." : "Les conseils arrivent après un tour complet comparé à la référence.")]),
   );
 
+  // mode entraînement
+  const tr = snap.training;
+  const trEl = $("#lv-training");
+  trEl.hidden = !tr;
+  if (tr) {
+    const THEMES = { braking: "Freinage", trail: "Trail-braking", min_speed: "Vitesse de corde", throttle: "Reprise des gaz", smoothness: "Fluidité", consistency: "Régularité" };
+    trEl.replaceChildren(
+      h("span", { class: "label", style: "display:inline;margin-right:10px" }, "Entraînement"),
+      h("span", { class: "chip", style: "color:var(--accent);margin-right:8px" }, THEMES[tr.theme] || "en préparation"),
+      ...(tr.corners.length
+        ? tr.corners.map((c) => h("span", { class: "chip ok", style: "margin-right:6px", title: tr.messages[c] || "" }, `${c} · ${tr.messages[c] || ""}`))
+        : [h("span", { class: "c-muted", style: "font-size:13px" }, "virages ciblés choisis après le premier tour comparé")]),
+    );
+  }
+
   // carte
   if (snap.track_version !== undefined && snap.track_version !== trackVersion) {
     trackVersion = snap.track_version;

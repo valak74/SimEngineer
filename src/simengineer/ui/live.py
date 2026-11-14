@@ -79,6 +79,18 @@ def build_snapshot(
         "ref_label": app.coach.reference_label,
         "spoken": [{"p": int(u.priority), "text": u.text} for u in app.arbiter.spoken[-12:][::-1]],
     }
+    training = app.coach.training
+    snap["training"] = (
+        {
+            "theme": training.theme,
+            "corners": [f"T{c:02d}" for c in training.active_corners],
+            "messages": {f"T{c:02d}": training.message(c) for c in training.active_corners},
+        }
+        if training is not None
+        else (
+            {"theme": None, "corners": [], "messages": {}} if app.cfg.coach.training_mode else None
+        )
+    )
     analysis = app.coach.last_analysis
     snap["advice"] = (
         {
