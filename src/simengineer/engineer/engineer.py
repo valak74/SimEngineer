@@ -7,21 +7,24 @@ instantané `RaceState` que les outils du LLM lisent (le LLM ne calcule rien).
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
+from simengineer.coach.corners import Corner
 from simengineer.core.config import EngineerConfig
 from simengineer.core.types import Frame, SessionInfo
 from simengineer.core.vars import FULL_COURSE_YELLOW_MASK
 from simengineer.engineer.fuel import FuelModel, FuelStatus, race_laps_remaining
+from simengineer.engineer.fuel_save import FuelSavePlan, plan_fuel_save
 from simengineer.engineer.gaps import Gaps, compute_gaps
 from simengineer.engineer.pit import PitWindow, pit_window
 from simengineer.engineer.pit_commands import DisabledPitCommander, PitCommander
 from simengineer.engineer.tyres import TyreModel, TyreStatus
 from simengineer.engineer.weather import WeatherMonitor, WeatherStatus
 from simengineer.telemetry.laps import Lap
+from simengineer.telemetry.resample import GridLap
 from simengineer.voice.arbiter import Priority, Utterance
-from simengineer.voice.templates import fmt_delta, fmt_lap_time, fmt_num, render
+from simengineer.voice.templates import corner_word, fmt_delta, fmt_lap_time, fmt_num, render
 
 
 @dataclass(slots=True)
@@ -40,6 +43,7 @@ class RaceState:
     laps_completed: int = 0
     valid_laps: int = 0
     under_yellow: bool = False
+    fuel_save: FuelSavePlan | None = None
 
 
 class RaceEngineer:
@@ -62,6 +66,10 @@ class RaceEngineer:
         self._yellow_since: float | None = None
         self._said: set[str] = set()  # annonces uniques (par arrêt / par neutralisation)
         self._last_frame: Frame | None = None
+        self._save_base: GridLap | None = None  # tour à l'attaque ayant servi au plan
+        self._save_target_lap: float | None = None
+        self._save_misses = 0
+        self._last_save_used: float | None = None
 
     # --- sortie
     def _utt(self, key: str, dedupe: str, cooldown_s: float = 60.0, **params: Any) -> Utterance:
@@ -138,6 +146,7 @@ class RaceEngineer:
             self._said.clear()  # nouvel arrêt effectué : les annonces de stand repartent
         if lap.complete and not lap.pit:
             out.append(self._lap_time_call(lap))
+        out += self._fuel_save_check(lap)
         f = self._last_frame
         if f is None:
             return out
@@ -159,8 +168,12 @@ class RaceEngineer:
                 )
             )
         liters = math.ceil(pit.fuel_to_add_l)
-        if pit.advice == "last_chance":
+        if pit.advice == "last_chance" and self._saving_holds():
+            pass  # le rythme économisé suffit pour finir : pas d'alarme
+        elif pit.advice == "last_chance":
             out.append(self._utt("pit_last_chance", "pit_last_chance", 0.0))
+        elif st.fuel_save is not None or self.save_possible():
+            pass  # économie possible : pas d'invitation à s'arrêter (« ce tour ! » reste actif)
         elif pit.advice == "open" and "pit_open" not in self._said:
             self._said.add("pit_open")
             out.append(self._utt("pit_window_open", "pit_open", liters=liters))
@@ -179,6 +192,117 @@ class RaceEngineer:
             self._said.add("tyres_worn")
             out.append(self._utt("tyres_worn", "tyres_worn", wear=round(tyres.wear_pct)))
         return out
+
+    # --- économie de carburant
+    def save_possible(self) -> bool:
+        """Finir sans s'arrêter est-il atteignable en économisant (calcul sans télémétrie) ?"""
+        f, cfg = self.state.fuel, self.cfg
+        if not self.info.is_race or f.avg_per_lap_l is None or f.laps_remaining is None:
+            return False
+        if f.fuel_to_add_l is None or f.laps_remaining < 1.0:
+            return False
+        short = f.fuel_to_add_l - cfg.fuel_margin_laps * f.avg_per_lap_l + cfg.fuel_save_reserve_l
+        return 0.0 < short <= cfg.fuel_save_max_share * f.avg_per_lap_l * f.laps_remaining
+
+    def _saving_holds(self) -> bool:
+        """En économie : le dernier tour a-t-il été assez sobre pour finir à ce rythme ?"""
+        target, used = self._save_target(), self._last_save_used
+        return (
+            self.state.fuel_save is not None
+            and target is not None
+            and used is not None
+            and used <= target + 0.01
+        )
+
+    def _save_target(self) -> float | None:
+        f = self.state.fuel
+        if f.laps_remaining is None or f.laps_remaining < 0.5 or not math.isfinite(f.fuel_l):
+            return None
+        return (f.fuel_l - self.cfg.fuel_save_reserve_l) / f.laps_remaining
+
+    def update_fuel_save(self, grid: GridLap, corners: list[Corner]) -> list[Utterance]:
+        """Après chaque tour propre analysé : crée le plan, le renforce ou y met fin."""
+        st, cfg = self.state, self.cfg
+        if not self.info.is_race:
+            return []
+        plan = st.fuel_save
+        target = self._save_target()
+        need: float | None = None
+        if plan is not None:
+            attack = plan.current_per_lap_l  # conso à l'attaque mesurée avant le plan
+            if target is not None and target >= attack:
+                st.fuel_save = None
+                self._save_misses = 0
+                return [self._utt("fuel_save_done", "fuel_save_done", 120.0)]
+            if target is None or target < attack * (1.0 - cfg.fuel_save_max_share):
+                # Trop tard pour économiser assez : retour à la stratégie d'arrêt.
+                st.fuel_save = None
+                self._save_misses = 0
+                self._said.discard("pit_open")
+                liters = math.ceil(st.fuel.fuel_to_add_l or 0.0)
+                return [self._utt("fuel_save_abort", "fuel_save_abort", 120.0, liters=liters)]
+            if self._save_misses < 2 or self._save_base is None:
+                return []
+            # Deux tours de suite au-dessus de l'objectif : renfort, corrigé par l'efficacité
+            # réellement mesurée (économie obtenue / économie prévue).
+            planned = attack - plan.target_per_lap_l
+            achieved = attack - (self._last_save_used or attack)
+            efficiency = min(max(achieved / planned, 0.5), 1.5) if planned > 0 else 1.0
+            need = (attack - target) / efficiency
+            fuel = replace(st.fuel, avg_per_lap_l=attack)
+            grid = self._save_base
+            self._save_misses = 0
+        else:
+            if not self.save_possible():
+                return []
+            fuel = st.fuel
+            self._save_base = grid
+        new = plan_fuel_save(
+            grid, corners, fuel, cfg.fuel_save_max_share * 1.5 if need else
+            cfg.fuel_save_max_share, cfg.fuel_margin_laps, cfg.fuel_save_reserve_l, need,
+        )  # fmt: skip
+        if new is None:
+            return []
+        if plan is not None and {(x.corner, x.lift_m) for x in plan.lifts} == {
+            (x.corner, x.lift_m) for x in new.lifts
+        }:
+            return []
+        if plan is not None:
+            new.current_per_lap_l = plan.current_per_lap_l
+        st.fuel_save = new
+        self._save_target_lap = target
+        lifts = ", ".join(
+            f"{round(x.lift_m)} mètres avant {corner_word(x.corner, self.lang, x.label)}"
+            if self.lang == "fr"
+            else f"{round(x.lift_m)} meters before {corner_word(x.corner, self.lang, x.label)}"
+            for x in new.lifts
+        )
+        save = self._n(new.current_per_lap_l - new.target_per_lap_l, 2)
+        return [self._utt("fuel_save_plan", "fuel_save_plan", 0.0, save=save, lifts=lifts)]
+
+    def _fuel_save_check(self, lap: Lap) -> list[Utterance]:
+        """Verdict du tour : conso réelle contre l'objectif fixé au début du tour."""
+        plan, target = self.state.fuel_save, self._save_target_lap
+        self._save_target_lap = self._save_target()
+        if plan is None or target is None or not lap.clean_for_fuel:
+            return []
+        used = lap.fuel_used
+        if not math.isfinite(used) or used <= 0:
+            return []
+        self._last_save_used = used
+        if used <= target + 0.01:
+            self._save_misses = 0
+            return [self._utt("fuel_save_ok", "fuel_save_check", 0.0, used=self._n(used, 2))]
+        self._save_misses += 1
+        return [
+            self._utt(
+                "fuel_save_more",
+                "fuel_save_check",
+                0.0,
+                used=self._n(used, 2),
+                target=self._n(target, 2),
+            )
+        ]
 
     def _lap_time_call(self, lap: Lap) -> Utterance:
         st = self.state

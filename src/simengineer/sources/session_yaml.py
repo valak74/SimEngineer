@@ -25,6 +25,8 @@ Y_SESSION_NUM = "SessionNum"
 Y_SESSION_TYPE = "SessionType"
 Y_SESSION_LAPS = "SessionLaps"
 Y_SESSION_TIME = "SessionTime"
+Y_INCIDENT_LIMIT = "IncidentLimit"  # WeekendInfo.WeekendOptions (hypothèse)
+Y_PIT_SPEED = "TrackPitSpeedLimit"  # WeekendInfo, « 60.00 kph » (hypothèse)
 
 
 def _num(text: Any) -> float | None:
@@ -42,6 +44,15 @@ def session_info_from_dicts(
     info.track_name = str(weekend.get(Y_TRACK_NAME, info.track_name))
     km = _num(weekend.get(Y_TRACK_LENGTH, ""))
     info.track_length_m = (km or 0.0) * 1000.0
+    options = weekend.get("WeekendOptions")
+    opts: Mapping[str, Any] = options if isinstance(options, Mapping) else weekend
+    inc = _num(opts.get(Y_INCIDENT_LIMIT, ""))
+    info.incident_limit = int(inc) if inc else None
+    pit = weekend.get(Y_PIT_SPEED, "")
+    pit_kmh = _num(pit)
+    if pit_kmh is not None and "mph" in str(pit).lower():
+        pit_kmh *= 1.609344
+    info.pit_speed_limit_kmh = pit_kmh
     info.player_car_idx = int(_num(driver_info.get(Y_DRIVER_CAR_IDX, 0)) or 0)
     info.fuel_capacity_l = float(_num(driver_info.get(Y_FUEL_MAX, 0)) or 0.0)
     for drv in driver_info.get(Y_DRIVERS, []) or []:
@@ -104,6 +115,13 @@ def session_info_to_yaml(info: SessionInfo) -> str:
         "WeekendInfo:\n"
         f" {Y_TRACK_NAME}: {info.track_name}\n"
         f" {Y_TRACK_LENGTH}: {info.track_length_m / 1000.0:.4f} km\n"
+        + (
+            f" {Y_PIT_SPEED}: {info.pit_speed_limit_kmh:.2f} kph\n"
+            if info.pit_speed_limit_kmh
+            else ""
+        )
+        + " WeekendOptions:\n"
+        f"  {Y_INCIDENT_LIMIT}: {info.incident_limit if info.incident_limit else 'unlimited'}\n"
         "SessionInfo:\n"
         f" {Y_SESSIONS}:\n"
         f" - {Y_SESSION_NUM}: 0\n"

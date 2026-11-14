@@ -318,6 +318,15 @@ class SimEngineerApp:
                     "meilleur tour de la séance" if self.cfg.language == "fr" else "session best"
                 )
                 self._remember_reference()
+        if (
+            self.engineer is not None
+            and lap.clean_for_fuel
+            and res.grid is not None
+            and coach.corners
+        ):
+            for utt in self.engineer.update_fuel_save(res.grid, coach.corners):
+                if announce:
+                    self.arbiter.submit(utt)
         if self.cfg.coach.training_mode:
             self._refresh_training()
             if coach.training is not None and res.analysis is not None:

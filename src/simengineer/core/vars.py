@@ -64,6 +64,7 @@ _SPECS: tuple[VarSpec, ...] = (
     _v("car_idx_on_pit_road", "CarIdxOnPitRoad", False, "bool par voiture"),
     _v("car_idx_lap", "CarIdxLap", False, "tours par voiture"),
     _v("car_idx_position", "CarIdxPosition", False, "position par voiture"),
+    _v("car_idx_f2_time", "CarIdxF2Time", False, "s, écart au leader par voiture"),
     # --- Météo / piste (lues à 1 Hz)
     _v("track_temp", "TrackTempCrew", False, "C"),
     _v("air_temp", "AirTemp", False, "C"),

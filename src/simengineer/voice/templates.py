@@ -60,6 +60,27 @@ TEMPLATES: dict[str, tuple[str, str]] = {
         "Pas encore assez de tours propres pour le carburant",
         "Not enough clean laps for fuel numbers yet",
     ),
+    "fuel_save_plan": (
+        "Économie de carburant : {save} litre par tour. Lève le pied {lifts}",
+        "Fuel saving: {save} liters per lap. Lift {lifts}",
+    ),
+    "fuel_save_ok": ("Conso {used}, objectif tenu", "Used {used}, on target"),
+    "fuel_save_more": (
+        "Conso {used}, objectif {target} : lève un peu plus",
+        "Used {used}, target {target}: lift a bit more",
+    ),
+    "fuel_save_abort": (
+        "Économie insuffisante, prévois un arrêt : {liters} litres",
+        "Saving won't be enough, plan a stop: {liters} liters",
+    ),
+    "fuel_save_status": (
+        "Mode économie : objectif {target} litre par tour, lever {lifts}",
+        "Fuel saving: target {target} liters per lap, lift {lifts}",
+    ),
+    "fuel_save_done": (
+        "Carburant suffisant jusqu'à l'arrivée, tu peux attaquer",
+        "Fuel is good to the end, you can push",
+    ),
     "pit_window_open": (
         "Fenêtre de stand ouverte, ajoute {liters} litres",
         "Pit window open, add {liters} liters",

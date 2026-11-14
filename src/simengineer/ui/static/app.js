@@ -174,6 +174,15 @@ function renderLive(snap) {
   fb.style.background = fuelCls === "bad" ? "var(--bad)" : fuelCls === "warn" ? "var(--warn)" : "var(--accent)";
   $("#c-fuel").className = `card s3 ${fuelCls}`;
   setText("lv-fuel-say", f.say || "—");
+  const fs = f.fuel_saving;
+  const save = $("#lv-fuel-save");
+  save.hidden = !fs;
+  if (fs) {
+    save.replaceChildren(
+      h("div", { class: "label", style: "margin:0 0 6px" }, `Économie · objectif ${num(fs.target_l_per_lap, 2)} L/tour (−${num(fs.save_l_per_lap, 2)})`),
+      ...fs.lifts.map((x) => h("span", { class: "chip warn", style: "margin:0 6px 6px 0" }, `${x.label || x.corner} · lève ${x.lift_m} m`)),
+    );
+  }
 
   // stand
   const p = snap.pit || {};

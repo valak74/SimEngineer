@@ -51,6 +51,7 @@ class Frame:
     car_idx_track_surface: IntArray | None = None
     car_idx_on_pit_road: NDArray[np.bool_] | None = None
     car_idx_position: IntArray | None = None
+    car_idx_f2_time: FloatArray | None = None
     # Variables lentes (pneus, météo), présentes ~1 fois par seconde, indexées par clé VARS.
     slow: dict[str, float] | None = None
 
@@ -65,12 +66,18 @@ class SessionInfo:
     fuel_capacity_l: float = 0.0
     session_laps: int | None = None  # None = course au temps / illimité
     session_time_s: float | None = None
+    incident_limit: int | None = None  # None = illimité
+    pit_speed_limit_kmh: float | None = None
     # Noms des pilotes : restent en local, jamais envoyés au LLM.
     drivers: dict[int, str] = field(default_factory=dict)
 
     @property
     def is_race(self) -> bool:
         return self.session_type.lower().startswith("race")
+
+    @property
+    def is_qualifying(self) -> bool:
+        return "qualif" in self.session_type.lower()
 
 
 @dataclass(frozen=True, slots=True)

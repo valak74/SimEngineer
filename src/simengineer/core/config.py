@@ -87,6 +87,8 @@ class EngineerConfig(_Section):
     tyre_wear_warning_pct: float = 35.0
     track_temp_delta_c: float = 3.0
     pit_commands_enabled: bool = False
+    fuel_save_max_share: float = 0.10  # économie max proposée : 10 % de la conso, sinon arrêt
+    fuel_save_reserve_l: float = 0.5  # réserve visée à l'arrivée en mode économie
     pit_confirm: bool = True  # commande de stand vocale : « je valide ? » puis « oui »
     pit_confirm_timeout_s: float = 20.0
     long_yellow_min_s: float = 20.0

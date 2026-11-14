@@ -22,6 +22,7 @@ DS = 0.5  # pas de la grille de distance (m)
 A_BRAKE = 13.0  # décélération à pression 1.0 (m/s^2)
 A_ACCEL = 6.5  # accélération à basse vitesse (m/s^2)
 A_LAT = 14.0  # accélération latérale au point de corde (m/s^2)
+COAST_DECEL = 1.6  # décélération en roue libre (frein moteur + aéro), m/s^2
 WHEELBASE = 2.46
 STEER_RATIO = 12.0
 N_CARS = 64
@@ -55,6 +56,7 @@ class CornerStyle:
     min_speed_delta: float = 0.0  # m/s
     throttle_offset_m: float = 0.0  # positif = reprend plus tard
     steering_corrections: int = 0
+    lift_m: float = 0.0  # lever de pied (roue libre) avant le freinage : économie de carburant
 
 
 LapStyle = tuple[tuple[int, CornerStyle], ...]  # (index de virage, style), hachable
@@ -139,29 +141,50 @@ def build_lap_profile(track: TrackDef, style: LapStyle = ()) -> LapProfile:
             phase = 2 * np.pi * st.steering_corrections * (dd + c.length_m / 2) / c.length_m
             wiggle += 0.09 * np.sin(phase) * (np.abs(dd) < c.length_m / 2)
         # montée en pression : mémorisée par virage pour être appliquée après la passe avant
-    v = np.empty(n)
-    limited = np.zeros(n, dtype=bool)
-    cur = float(min(limit[0], track.top_speed))
     lim = limit.tolist()
-    for _ in range(2):  # deux passes : régime périodique
-        for i in range(n):
-            a = A_ACCEL * max(0.0, 1.0 - (cur / track.top_speed) ** 2)
-            nxt = (cur * cur + 2.0 * a * DS) ** 0.5
-            li = lim[i]
-            if nxt >= li:
-                nxt = li
-                limited[i] = li < track.top_speed - 1e-9
-            else:
-                limited[i] = False
-            v[i] = nxt
-            cur = nxt
+
+    def forward(coast: np.ndarray[Any, Any] | None) -> tuple[FloatArray, np.ndarray[Any, Any]]:
+        v = np.empty(n)
+        limited = np.zeros(n, dtype=bool)
+        cur = float(min(lim[0], track.top_speed))
+        co = coast.tolist() if coast is not None else None
+        for _ in range(2):  # deux passes : régime périodique
+            for i in range(n):
+                if co is not None and co[i]:
+                    nxt = max(cur * cur - 2.0 * COAST_DECEL * DS, 1.0) ** 0.5
+                else:
+                    a = A_ACCEL * max(0.0, 1.0 - (cur / track.top_speed) ** 2)
+                    nxt = (cur * cur + 2.0 * a * DS) ** 0.5
+                li = lim[i]
+                if nxt >= li:
+                    nxt = li
+                    limited[i] = li < track.top_speed - 1e-9
+                else:
+                    limited[i] = False
+                v[i] = nxt
+                cur = nxt
+        return v, limited
+
+    def corner_of(i: int) -> int:
+        return int(np.argmin([(c.apex_m - s[i]) % track.length_m for c in track.corners]))
+
+    v, limited = forward(None)
+    coast = np.zeros(n, dtype=bool)
+    if any(st.lift_m > 0 for st in styles.values()):
+        mask = limited & ~hold_zone & (brake_zone > 0)
+        for b0 in np.flatnonzero(mask & ~np.roll(mask, 1)):
+            lift = styles.get(corner_of(int(b0)), CornerStyle()).lift_m
+            if lift > 0:
+                coast[(b0 - np.arange(1, int(lift / DS) + 1)) % n] = True
+        v, limited = forward(coast)
+        limited &= ~coast
 
     braking_mask = limited & ~hold_zone & (brake_zone > 0)
     brake = np.where(braking_mask, brake_zone, 0.0)
     # Montée en pression : rampe depuis le début de chaque zone de freinage.
     starts = np.flatnonzero(braking_mask & ~np.roll(braking_mask, 1))
     for b0 in starts:
-        ci = int(np.argmin([(c.apex_m - s[b0]) % track.length_m for c in track.corners]))
+        ci = corner_of(int(b0))
         ramp_m = max(styles.get(ci, CornerStyle()).brake_ramp_m, DS)
         k = int(ramp_m / DS) + 1
         idx = (b0 + np.arange(k)) % n
@@ -172,6 +195,7 @@ def build_lap_profile(track: TrackDef, style: LapStyle = ()) -> LapProfile:
     throttle = np.where(hold_zone & ~braking_mask, 0.12, throttle)
     ramp = np.clip(thr_start / 25.0, 0.0, 1.0)
     throttle = np.where((thr_start >= 0) & ~hold_zone & ~braking_mask, 0.3 + 0.7 * ramp, throttle)
+    throttle = np.where(coast & ~braking_mask, 0.0, throttle)
 
     v_next = np.roll(v, -1)
     dt = DS / np.maximum((v + v_next) / 2.0, 1.0)
@@ -223,6 +247,12 @@ class Scenario:
     noise: float = 0.0
     seed: int = 0
     first_lap: int = 1
+    fuel_throttle_model: bool = False  # conso proportionnelle à l'accélérateur (lever de pied)
+    incident_limit: int | None = None
+    pit_speed_limit_kmh: float = 60.0
+    pit_drive_kmh: float | None = (
+        None  # vitesse réelle dans la voie des stands (défaut : limite - 1)
+    )
     extra: dict[str, Any] = field(default_factory=dict, hash=False, compare=False)
 
 
@@ -294,7 +324,19 @@ def generate(sc: Scenario) -> RawSession:
 
     # Stands, carburant, pneus.
     on_pit = np.zeros(n_frames, dtype=np.bool_)
-    fuel = sc.fuel_start_l - sc.fuel_per_lap_l * s_tot / length
+    if sc.fuel_throttle_model:
+        # Débit ∝ (ralenti + accélérateur) le long de la distance ; un tour du style de base
+        # consomme exactement fuel_per_lap_l.
+        def burn(p: LapProfile) -> FloatArray:
+            return np.asarray(0.08 + 0.92 * p.throttle, dtype=np.float64)
+
+        norm = float(burn(build_lap_profile(track, sc.base_style)).sum())
+        cum = np.concatenate([[0.0], np.cumsum(np.concatenate([burn(p) for p in profiles]))])
+        s_grid = np.concatenate([s_all[:-1], [s_all[-1]]])
+        used = np.interp(s_tot, s_grid, cum[: len(s_grid)]) * sc.fuel_per_lap_l / norm
+        fuel = sc.fuel_start_l - used
+    else:
+        fuel = sc.fuel_start_l - sc.fuel_per_lap_l * s_tot / length
     wear_laps = s_tot / length
     for pit_lap, added in sc.pit_stops:
         entering = (lap_i == pit_lap) & (pct > 0.93)
@@ -305,6 +347,8 @@ def generate(sc: Scenario) -> RawSession:
         wear_laps = np.where(after, s_tot / length - (pit_lap + 1), wear_laps)
     cols[_n("on_pit_road")] = on_pit
     cols[_n("fuel_level")] = np.maximum(fuel, 0.0)
+    pit_drive = (sc.pit_drive_kmh or sc.pit_speed_limit_kmh - 1.0) / 3.6
+    cols[_n("speed")] = np.where(on_pit, np.minimum(speed, pit_drive), speed)
 
     surface = np.full(n_frames, int(TrackSurface.ON_TRACK), dtype=np.int64)
     surface[on_pit] = int(TrackSurface.APPROACHING_PITS)
@@ -348,6 +392,7 @@ def generate(sc: Scenario) -> RawSession:
     car_pit[:, 0] = on_pit
     n_left = np.zeros(n_frames, dtype=np.int64)
     n_right = np.zeros(n_frames, dtype=np.int64)
+    totals: dict[int, FloatArray] = {0: s_tot}  # distance totale parcourue (classement)
     for car in sc.others:
         t_car = time if car.stop_at_s is None else np.minimum(time, car.stop_at_s)
         if car.pace == 0.0:
@@ -369,6 +414,8 @@ def generate(sc: Scenario) -> RawSession:
                 np.interp(tt + lap0, t_all, s_all) - length,
             )
         car_pct[:, car.idx] = (s_car % length) / length
+        if not car.in_pits:
+            totals[car.idx] = np.asarray(s_car, dtype=np.float64)
         surf = np.full(n_frames, int(TrackSurface.ON_TRACK), dtype=np.int64)
         if car.stop_at_s is not None:
             surf[time >= car.stop_at_s] = car.stopped_surface
@@ -409,6 +456,22 @@ def generate(sc: Scenario) -> RawSession:
             cols[_n(f"tyre_{corner}_wear_{pos}")] = stint_start_wear
         cols[_n(f"tyre_{corner}_pressure")] = np.full(n_frames, 175.0)
 
+    # Classement (distance totale) et écart au leader en temps (≈ distance / vitesse moyenne).
+    idxs = sorted(totals)
+    dist = np.stack([totals[i] for i in idxs], axis=1)
+    order = np.argsort(-dist, axis=1, kind="stable")
+    ranks = np.empty_like(order)
+    np.put_along_axis(ranks, order, np.arange(1, len(idxs) + 1)[None, :].repeat(n_frames, 0), 1)
+    car_pos = np.zeros((n_frames, N_CARS), dtype=np.int64)
+    car_f2 = np.full((n_frames, N_CARS), -1.0, dtype=np.float32)
+    v_avg = length / profiles[0].lap_time
+    lead = dist.max(axis=1)
+    for k, i in enumerate(idxs):
+        car_pos[:, i] = ranks[:, k]
+        car_f2[:, i] = (lead - dist[:, k]) / v_avg
+    cols[_n("car_idx_position")] = car_pos
+    cols[_n("car_idx_f2_time")] = car_f2
+
     info = SessionInfo(
         track_name=track.name,
         track_length_m=length,
@@ -418,6 +481,8 @@ def generate(sc: Scenario) -> RawSession:
         fuel_capacity_l=sc.fuel_capacity_l,
         session_laps=sc.race_laps,
         session_time_s=sc.race_time_s,
+        incident_limit=sc.incident_limit,
+        pit_speed_limit_kmh=sc.pit_speed_limit_kmh,
         drivers={0: "Pilote", **{c.idx: f"Voiture {c.idx}" for c in sc.others}},
     )
     meta = {s.name: (s.unit, "synthétique") for s in VARS.values()}

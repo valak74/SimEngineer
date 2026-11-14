@@ -101,6 +101,8 @@ class FrameBuilder:
             f.car_idx_on_pit_road = np.asarray(get(n["car_idx_on_pit_road"]), dtype=np.bool_)
         if "car_idx_position" in n:
             f.car_idx_position = np.asarray(get(n["car_idx_position"]), dtype=np.int64)
+        if "car_idx_f2_time" in n:
+            f.car_idx_f2_time = np.asarray(get(n["car_idx_f2_time"]), dtype=np.float64)
         if with_slow and self._slow:
             f.slow = {k: float(get(name)) for k, name in self._slow}
         return f

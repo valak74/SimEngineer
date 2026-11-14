@@ -183,7 +183,24 @@ class ToolRegistry:
             "margin_laps": _r(f.margin_laps),
             "can_finish": f.can_finish,
         }
-        if f.laps_in_tank is None:
+        plan = getattr(self._eng.state, "fuel_save", None)
+        if plan is not None:
+            out["fuel_saving"] = {
+                "target_l_per_lap": _r(plan.target_per_lap_l, 2),
+                "save_l_per_lap": _r(plan.current_per_lap_l - plan.target_per_lap_l, 2),
+                "est_time_cost_s_per_lap": _r(plan.cost_per_lap_s, 2),
+                "lifts": [
+                    {"corner": f"T{x.corner:02d}", "label": x.label, "lift_m": round(x.lift_m)}
+                    for x in plan.lifts
+                ],
+            }
+        if plan is not None:
+            out["say"] = self._say(
+                "fuel_save_status",
+                target=self._n(plan.target_per_lap_l, 2),
+                lifts=", ".join(f"{round(x.lift_m)} m T{x.corner}" for x in plan.lifts),
+            )
+        elif f.laps_in_tank is None:
             out["say"] = self._say("fuel_unknown")
         elif f.laps_remaining is None:
             out["say"] = self._say("fuel_laps", laps=self._n(f.laps_in_tank))
