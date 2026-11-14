@@ -11,5 +11,5 @@
 | 6 Dialogue et LLM | fait | STT faster-whisper + push-to-talk (clavier/volant), client OpenAI-compatible Qwen -> DeepSeek (délai 8 s, 1 relance, bascule, plafond quotidien), 9 outils validés par pydantic, garde-fou « chiffres sourcés », mode tout local par gabarits, commentaire de rapport ; appels réels non testés (pas de clé) |
 | 7 Références | fait | import .ibt et CSV (unités auto, temps reconstruit), provenance + droits obligatoires, delta temps réel O(1), sélection automatique même circuit/même voiture |
 | 8 Profil et programme | fait | tendances par virage multi-séances (pente, défaut dominant), un thème par séance avec exercices et objectif chiffré, calibration des seuils sur la dispersion du pilote (appliquée à la séance suivante) |
-| 9 Setup | à faire | |
+| 9 Setup | fait | indice de sous-virage et contre-braquages par phase (signes estimés, pas supposés), températures/pressions pneus, pistes de réglage, avant/après sur tours propres avec verdict, guide d'application manuelle |
 | 10 Packaging et perf | à faire | |

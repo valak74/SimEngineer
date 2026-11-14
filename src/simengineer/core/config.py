@@ -105,7 +105,7 @@ class SetupConfig(_Section):
     steering_ratio: float = 12.0
     wheelbase_m: float = 2.46
     understeer_index: float = 1.6
-    oversteer_events_per_lap: float = 3.0
+    oversteer_events_per_lap: float = 1.0  # par phase de virage
     camber_spread_max_c: float = 14.0
     camber_spread_min_c: float = 3.0
     pressure_middle_delta_c: float = 4.0

@@ -397,5 +397,80 @@ def training(
     typer.echo(plan.render(cfg.language))
 
 
+setup_app = typer.Typer(
+    help="Conseiller de setup (tu appliques les réglages toi-même).", no_args_is_help=True
+)
+app.add_typer(setup_app, name="setup")
+
+
+@setup_app.command("diagnose")
+def setup_diagnose(
+    config: ConfigOpt = None,
+    session: Annotated[int | None, typer.Option(help="Session (défaut : la dernière).")] = None,
+) -> None:
+    """Diagnostic sous/survirage par phase et pneus, sur les tours propres de la session."""
+    from simengineer.coach.corners import Corner, detect_corners
+    from simengineer.setup.diagnosis import diagnose
+    from simengineer.setup.guide import render_diagnosis
+    from simengineer.store.db import Store
+
+    cfg = _load(config)
+    store = Store(cfg.data_dir)
+    sid = _session_or_last(store, session)
+    grids = [store.load_grid(r.npz_path) for r in store.laps(sid, valid_only=True) if r.npz_path]
+    if not grids:
+        typer.echo("Aucun tour propre dans cette session.")
+        raise typer.Exit(1)
+    stored = store.kv_get(f"trackmap:{store.session(sid).track}")
+    corners = (
+        [Corner.from_dict(c) for c in stored] if stored else detect_corners(grids[0], cfg.coach)
+    )
+    temps = store.kv_get(f"tyres:{sid}") or {}
+    result = diagnose(grids, corners, cfg.setup, {k: (v[0], v[1], v[2]) for k, v in temps.items()})
+    typer.echo(render_diagnosis(result, cfg.language))
+
+
+@setup_app.command("mark")
+def setup_mark(
+    description: Annotated[str, typer.Argument(help="Réglage changé, ex. « ARB avant -1 cran ».")],
+    config: ConfigOpt = None,
+    session: Annotated[int | None, typer.Option(help="Session (défaut : la dernière).")] = None,
+) -> None:
+    """Note un changement de réglage (les tours suivants seront comparés aux précédents)."""
+    from simengineer.setup.compare import add_mark
+    from simengineer.store.db import Store
+
+    cfg = _load(config)
+    store = Store(cfg.data_dir)
+    mark = add_mark(store, _session_or_last(store, session), description)
+    typer.echo(f"Changement noté après le tour {mark.after_lap} : {mark.description}")
+
+
+@setup_app.command("compare")
+def setup_compare(
+    config: ConfigOpt = None,
+    session: Annotated[int | None, typer.Option(help="Session (défaut : la dernière).")] = None,
+) -> None:
+    """Avant/après du dernier changement noté, sur tours propres."""
+    from simengineer.setup.compare import compare_mark, render_comparison
+    from simengineer.store.db import Store
+
+    cfg = _load(config)
+    store = Store(cfg.data_dir)
+    result = compare_mark(store, _session_or_last(store, session), cfg.setup, cfg.coach)
+    if result is None:
+        typer.echo('Aucun changement noté. Utilise d\'abord `simengineer setup mark "…"`.')
+        raise typer.Exit(1)
+    typer.echo(render_comparison(result, cfg.language))
+
+
+@setup_app.command("guide")
+def setup_guide(config: ConfigOpt = None) -> None:
+    """Comment appliquer un réglage à la main dans le garage iRacing."""
+    from simengineer.setup.guide import apply_guide
+
+    typer.echo(apply_guide(_load(config).language))
+
+
 if __name__ == "__main__":
     app()

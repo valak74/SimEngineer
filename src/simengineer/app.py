@@ -265,6 +265,13 @@ class SimEngineerApp:
             if self.session_id:
                 from simengineer.coach.calibration import calibrate
 
+                if self.engineer is not None and self.engineer.state.tyres.temps_c:
+                    # Dernières températures lues au stand : pour le diagnostic de setup.
+                    self.store.kv_set(
+                        f"tyres:{self.session_id}",
+                        {k: list(v) for k, v in self.engineer.state.tyres.temps_c.items()},
+                    )
+
                 calibrate(self.store, self.info.track_name, self.info.car_name, self.cfg.coach)
         finally:
             self.worker.close()
