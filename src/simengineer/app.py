@@ -144,6 +144,16 @@ class SimEngineerApp:
             self.coach.reference_label = row.label
             self.coach.reference_is_imported = True
             self._remember_reference()
+            from simengineer.reference.delta import LiveDelta
+
+            delta = LiveDelta(grid)
+            coach = self.coach
+
+            def on_frame(f: Frame) -> None:
+                coach.delta_s = delta.update(f)
+
+            self.add_frame_hook(on_frame)
+            log.info("Référence : %s (%.3f s)", row.label, grid.lap_time)
 
     def _remember_reference(self) -> None:
         ref = self.coach.reference

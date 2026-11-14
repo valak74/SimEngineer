@@ -264,5 +264,84 @@ def ask(
     typer.echo(f"{result.text}\n  [source : {result.source} ; outils : {result.tools_used}]")
 
 
+ref_app = typer.Typer(help="Tours de référence (fichiers que tu possèdes).", no_args_is_help=True)
+app.add_typer(ref_app, name="ref")
+
+
+@ref_app.command("import")
+def ref_import(
+    file: Annotated[Path, typer.Argument(help="Fichier .ibt ou .csv.")],
+    source: Annotated[str, typer.Option(help="Provenance (ex. « mon tour », « pack acheté »).")],
+    rights: Annotated[str, typer.Option(help="Droit d'usage (ex. « personnel », « licence X »).")],
+    label: Annotated[str, typer.Option(help="Nom affiché.")] = "",
+    track: Annotated[str, typer.Option(help="Circuit (CSV uniquement).")] = "",
+    car: Annotated[str, typer.Option(help="Voiture (CSV uniquement).")] = "",
+    track_length: Annotated[float | None, typer.Option(help="Longueur en m (CSV en %).")] = None,
+    lap: Annotated[int | None, typer.Option(help="Numéro de tour (.ibt).")] = None,
+    config: ConfigOpt = None,
+) -> None:
+    """Importe un tour de référence avec ses métadonnées de provenance et de droits."""
+    from simengineer.reference.importer import import_csv, import_ibt
+    from simengineer.store.db import Store
+    from simengineer.voice.templates import fmt_lap_time
+
+    cfg = _load(config)
+    store = Store(cfg.data_dir)
+    try:
+        if file.suffix.lower() == ".ibt":
+            row = import_ibt(store, file, source, rights, label, lap)
+        else:
+            row = import_csv(store, file, track, car, source, rights, label, track_length)
+    except (ValueError, OSError) as exc:
+        typer.echo(f"Import refusé : {exc}")
+        raise typer.Exit(1) from exc
+    typer.echo(
+        f"Référence {row.id} importée : {row.track} / {row.car} / "
+        f"{fmt_lap_time(row.lap_time, cfg.language)} ({row.source} ; {row.rights})"
+    )
+
+
+@ref_app.command("list")
+def ref_list(config: ConfigOpt = None) -> None:
+    """Liste les références importées."""
+    from simengineer.reference.store import list_references
+    from simengineer.store.db import Store
+
+    cfg = _load(config)
+    rows = list_references(Store(cfg.data_dir))
+    if not rows:
+        typer.echo("Aucune référence importée.")
+    for r in rows:
+        typer.echo(
+            f"{r.id:>3}  {r.lap_time:8.3f}s  {r.track} / {r.car}  [{r.label}]  "
+            f"source: {r.source} ; droits: {r.rights}"
+        )
+
+
+@ref_app.command("delete")
+def ref_delete(ref_id: int, config: ConfigOpt = None) -> None:
+    """Supprime une référence importée."""
+    from simengineer.reference.store import delete_reference
+    from simengineer.store.db import Store
+
+    cfg = _load(config)
+    delete_reference(Store(cfg.data_dir), ref_id)
+    typer.echo(f"Référence {ref_id} supprimée.")
+
+
+@app.command("sessions")
+def sessions(config: ConfigOpt = None) -> None:
+    """Liste les sessions enregistrées (noms exacts de circuit et de voiture)."""
+    from simengineer.store.db import Store
+
+    cfg = _load(config)
+    store = Store(cfg.data_dir)
+    for s in store.sessions():
+        n = len(store.laps(s.id))
+        typer.echo(
+            f"{s.id:>4}  {s.started_at[:16]}  {s.track} / {s.car}  {s.session_type}  {n} tours"
+        )
+
+
 if __name__ == "__main__":
     app()
