@@ -15,6 +15,7 @@
 | 10 Packaging et perf | fait | scripts Windows (installation, démarrage auto, PyInstaller), `perf` : 1,74 % d'un cœur et 80 Mo en simulé, `measure-position`, attente et reconnexion iRacing, source live testée avec un faux pyirsdk ; tout reste à vérifier sur le PC (RUN_ON_PC.md) |
 | 11 Interface | fait | interface web locale sombre/futuriste : Direct (delta, tour, carburant, stand, carte du circuit avec voitures, radio, coach, écarts, pneus, météo), Séances, Pilote, Setup, Références ; 1,5 % d'un cœur et 87 Mo avec un client connecté ; rendu vérifié par captures (Chromium), pas encore sur le PC |
 | 12 Entraînement + traces | fait | mode entraînement (`run --training`) : rappel vocal ≤ 8 mots dans la ligne droite ~3,5 s avant le freinage des virages du programme, chiffré par le dernier tour ; traces superposées tour/référence dans Séances (delta, vitesse, gaz, frein, volant), zoom par virage, réticule |
+| 13 Fiabilité et GT3 | fait | CI Windows + Ubuntu ; confirmation vocale des commandes de stand ; virages nommés par circuit (`track export`) ; alerte « voiture plus rapide derrière » (écart en temps) ; README complet avec captures |
 
 ## Synthèse
 

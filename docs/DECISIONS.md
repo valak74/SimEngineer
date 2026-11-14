@@ -26,3 +26,7 @@
 | D22 | Rappels d'entraînement en P2, durée de vie 2,5 s, déclenchés ~3,5 s avant le freinage de la référence et jamais avant la sortie du virage précédent ; virage ignoré si la ligne droite fait moins de 2 s | un rappel en retard est pire qu'aucun rappel |
 | D23 | Virages ciblés : programme d'entraînement (profil), sinon points faibles, sinon pires virages du dernier tour ; 3 au maximum | un seul thème par séance |
 | D24 | Traces : grille de 2 m, référence = tour importé, sinon meilleur tour de la séance (2e meilleur si l'on affiche le meilleur) ; tours invalides traçables | lisibilité et poids du JSON (~150 Ko) |
+| D25 | Virages nommés : fichier TOML par circuit dans `data/tracks/`, prioritaire sur la détection, repli automatique s'il est invalide ; nom prononcé seulement s'il fait ≤ 3 mots (limite de 8 mots en P2) | simple à éditer, réversible |
+| D26 | Commandes de stand vocales : mise en attente 20 s puis « oui »/« non » traités localement, jamais par le LLM ; la question de confirmation est dite telle quelle | une transcription erronée ne doit pas modifier le ravitaillement |
+| D27 | « Voiture plus rapide derrière » : écart en temps (instant de passage du pilote au même point), rapprochement ≥ 0,04 s/s sur ~2 s, annonce P1 unique par voiture à ≤ 3 s ; l'écart en mètres (accordéon aux freinages) donnait de fausses alertes | pas de variable de classe vérifiée |
+| D28 | CI GitHub Actions Windows + Ubuntu ; les tests désactivent l'interface (pas de navigateur) | détecter tôt les problèmes propres à Windows |

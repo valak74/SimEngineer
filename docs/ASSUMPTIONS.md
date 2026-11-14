@@ -70,4 +70,6 @@ Tous les noms sont centralisés dans `src/simengineer/core/vars.py` (`VARS`).
 | Pas de baisse de FPS iRacing | à mesurer |
 | Rendu de l'interface dans Edge/Chrome sous Windows (police Bahnschrift) identique aux captures Chromium Linux | à vérifier |
 | L'interface ouverte sur le PC de jeu ne fait pas baisser les FPS | à mesurer |
+| L'écart en temps calculé depuis `CarIdxLapDistPct` suffit à détecter une voiture plus rapide sans variable de classe | à vérifier en course multiclasse |
+| faster-whisper transcrit correctement « oui » / « non » courts pour la confirmation de stand | à vérifier |
 | L'exécutable PyInstaller embarque correctement faster-whisper / Piper / onnxruntime | à vérifier |

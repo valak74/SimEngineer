@@ -71,6 +71,9 @@ Dans la suite, `simengineer` = `.\.venv\Scripts\simengineer.exe`.
 | 32 | `simengineer perf --source live --with-ui --seconds 120`, interface ouverte | « Dans le budget : OUI » | les lignes affichées |
 | 33 | Mode entraînement : `simengineer run --source live --training`, 10 tours après au moins une séance analysée sur ce circuit | « Mode entraînement : <thème>, virages … » puis, à chaque tour, le rappel arrive dans la ligne droite AVANT le freinage, jamais en plein virage | rappels trop tôt / trop tard (`coach.callout_lead_s`, défaut 3,5 s) ; gênant ou utile ? |
 | 34 | Onglet Séances, clique un tour puis un virage | traces tour/référence lisibles, zoom, réticule qui suit la souris (ou le doigt sur tablette) | capture ; courbes absurdes éventuelles (signe du volant, unités) |
+| 35 | Course multiclasse (ou IA plus rapides) : laisse une voiture plus rapide te rattraper | « Voiture plus rapide, N secondes derrière » une seule fois par voiture, quelques secondes avant qu'elle n'arrive ; aucune annonce pour une voiture au même rythme | annonce trop tôt / trop tard / fausses alertes (`spotter.faster_*`) |
+| 36 | `pit_commands_enabled = true`, push-to-talk : « mets 20 litres » puis « oui » ; refaire avec « non » | la question « 20 litres au prochain arrêt, je valide ? », puis la boîte noire de stand change seulement après « oui » | OK / transcription de « oui »/« non » |
+| 37 | `simengineer track export`, nomme 2 virages (`label`), relance une séance | les conseils et l'interface utilisent les noms ; `simengineer track show` indique « fichier » | OK / bornes de virages à corriger |
 
 ## C. Variables d'environnement
 
