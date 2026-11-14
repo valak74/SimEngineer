@@ -55,8 +55,9 @@ def test_short_templates_are_short_in_both_languages() -> None:
     p2 = [k for k in TEMPLATES if k.startswith("adv_")]
     for key in p0 + p2:
         for lang in ("fr", "en"):
-            text = render(key, lang, dist=300, n=12, d=15, kmh=5)
-            assert word_count(text) <= MAX_WORDS_SHORT, (key, lang, text)
+            for c in ("Virage 12", "Turn 12", "Raidillon Eau Rouge"):  # nom de 3 mots maximum
+                text = render(key, lang, dist=300, c=c, d=15, kmh=5)
+                assert word_count(text) <= MAX_WORDS_SHORT, (key, lang, text)
 
 
 def test_formatting() -> None:

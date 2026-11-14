@@ -22,10 +22,16 @@ class Corner:
     zone_start_m: float  # zones : partition complète du tour (pour répartir le temps)
     zone_end_m: float
     direction: int  # signe de l'accélération latérale (convention du sim, non interprétée)
+    label: str = ""  # nom donné par le pilote (fichier du circuit), ex. « La Source »
 
     @property
     def name(self) -> str:
         return f"T{self.number:02d}"
+
+    @property
+    def display(self) -> str:
+        """« T03 La Source » si le virage est nommé, sinon « T03 »."""
+        return f"{self.name} {self.label}" if self.label else self.name
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

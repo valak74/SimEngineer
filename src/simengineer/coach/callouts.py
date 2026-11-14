@@ -24,7 +24,7 @@ from simengineer.core.config import CoachConfig
 from simengineer.core.types import Frame
 from simengineer.telemetry.resample import GridLap
 from simengineer.voice.arbiter import Priority, Utterance
-from simengineer.voice.templates import render
+from simengineer.voice.templates import corner_word, render
 
 CALLOUT_TTL_S = 2.5
 MIN_SPEED_MS = 15.0
@@ -70,7 +70,9 @@ class CornerCallouts:
         focus: list[int],
         theme: str,
         lang: str = "fr",
+        labels: dict[int, str] | None = None,
     ) -> None:
+        self.labels = dict(labels or {})
         self.length = track_length_m
         self.lang = lang
         self.theme = theme
@@ -90,7 +92,10 @@ class CornerCallouts:
         self._triggers = [p.trigger_m for p in self._points]
 
     def _generic(self, corner: int) -> tuple[str, str]:
-        return f"call_{self.theme}", render(f"call_{self.theme}", self.lang, n=corner)
+        return f"call_{self.theme}", render(f"call_{self.theme}", self.lang, c=self._word(corner))
+
+    def _word(self, corner: int) -> str:
+        return corner_word(corner, self.lang, self.labels.get(corner, ""))
 
     def set_points(self, points: list[CalloutPoint]) -> None:
         """Nouveaux points de déclenchement (la référence a changé)."""
@@ -121,7 +126,7 @@ class CornerCallouts:
             if adv is not None and adv.issue in ACTIVE_ISSUES:
                 self._messages[c] = (f"adv_{adv.issue}", adv.short)
             elif c in analysed:
-                self._messages[c] = ("call_good", render("call_good", self.lang, n=c))
+                self._messages[c] = ("call_good", render("call_good", self.lang, c=self._word(c)))
 
     def message(self, corner: int) -> str:
         return self._messages.get(corner, self._generic(corner))[1]

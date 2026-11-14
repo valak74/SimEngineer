@@ -452,7 +452,7 @@ function renderTraces(box, t) {
     h("button", { class: corner ? "" : "sel", onclick: () => { state.zoom = null; renderTraces(box, t); } }, "Tour complet"),
     ...t.corners.map((c) => h("button", {
       class: `${corner && corner.name === c.name ? "sel" : ""} ${c.loss_s > 0.03 ? "lose" : c.loss_s < -0.03 ? "win" : ""}`,
-      title: `${signed(c.loss_s, 2)} s vs réf.`,
+      title: `${c.label ? c.label + " · " : ""}${signed(c.loss_s, 2)} s vs réf.`,
       onclick: () => { state.zoom = c.name; renderTraces(box, t); },
     }, c.name)));
 
@@ -563,7 +563,7 @@ function renderTraces(box, t) {
 
   const adv = corner ? t.advice.filter((a) => a.corner === corner.name) : [];
   box.replaceChildren(h("div", { class: "card" },
-    h("h3", {}, corner ? `Virage ${corner.name}` : "Tour complet", h("span", { class: "r" }, corner ? `${signed(corner.loss_s, 2)} s vs réf. dans ce virage` : "survole pour lire les valeurs · clique un virage pour zoomer")),
+    h("h3", {}, corner ? `Virage ${corner.name}${corner.label ? " · " + corner.label : ""}` : "Tour complet", h("span", { class: "r" }, corner ? `${signed(corner.loss_s, 2)} s vs réf. dans ce virage` : "survole pour lire les valeurs · clique un virage pour zoomer")),
     zoomBar, legend,
     adv.length ? h("div", { class: "target", style: "margin:0 0 14px" }, adv.map((a) => h("div", {}, a.text))) : null,
     wrap));

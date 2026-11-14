@@ -21,6 +21,7 @@ from simengineer.coach.pipeline import (
     debrief_utterances,
     process_lap,
 )
+from simengineer.coach.trackmap import labels, load_corners, save_detected
 from simengineer.coach.worker import InlineWorker, ProcessWorker, Worker
 from simengineer.core.config import AppConfig
 from simengineer.core.events import EventBus, LapCompleted, SessionEnded, SessionStarted
@@ -52,10 +53,6 @@ class CoachState:
     last_analysis: LapAnalysis | None = None
     delta_s: float | None = None  # delta temps réel par rapport à la référence
     training: CornerCallouts | None = None  # mode entraînement (rappels avant virage)
-
-
-def trackmap_key(track: str) -> str:
-    return f"trackmap:{track}"
 
 
 class SimEngineerApp:
@@ -130,9 +127,9 @@ class SimEngineerApp:
         self.coach_cfg = apply_calibration(
             self.store, self.info.track_name, self.info.car_name, cfg.coach
         )
-        stored = self.store.kv_get(trackmap_key(self.info.track_name))
-        if stored:
-            self.coach.corners = [Corner.from_dict(c) for c in stored]
+        known = load_corners(self.store, self.info.track_name, self.info.track_length_m)
+        if known:
+            self.coach.corners = known
         self._select_reference()
         if cfg.coach.training_mode:
             self._init_training()
@@ -206,7 +203,7 @@ class SimEngineerApp:
         if coach.training is None:
             coach.training = CornerCallouts(
                 [], self.info.track_length_m, self._training_focus, self._training_theme,
-                self.cfg.language,
+                self.cfg.language, labels(coach.corners),
             )  # fmt: skip
         if ref is not self._training_ref:
             self._training_ref = ref
@@ -308,9 +305,7 @@ class SimEngineerApp:
         self._lap_ids[lap.number] = lap_id
         if res.corners and not coach.corners:
             coach.corners = res.corners
-            self.store.kv_set(
-                trackmap_key(self.info.track_name), [c.to_dict() for c in res.corners]
-            )
+            save_detected(self.store, self.info.track_name, res.corners)
         if res.analysis is not None:
             coach.last_analysis = res.analysis
             self.store.add_corner_results(self.session_id, lap_id, corner_rows(res.analysis))

@@ -89,7 +89,7 @@ def test_callout_utterance_properties() -> None:
     assert u.text == "Virage 3, relâche le frein progressivement"
     for key in [k for k in TEMPLATES if k.startswith("call_")]:
         for lang in ("fr", "en"):
-            assert word_count(render(key, lang, n=12)) <= 8, key
+            assert word_count(render(key, lang, c="Raidillon Eau Rouge")) <= 8, key
 
 
 def test_messages_follow_last_analysis() -> None:

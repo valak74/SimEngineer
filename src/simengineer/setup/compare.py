@@ -113,11 +113,11 @@ def compare_mark(
     after = [store.load_grid(r.npz_path or "") for r in rows if mark.after_lap < r.number <= hi]
     if not before and not after:
         return compare_stints([], [], [], setup_cfg, mark.description)
-    stored = store.kv_get(f"trackmap:{store.session(session_id).track}")
-    corners = (
-        [Corner.from_dict(c) for c in stored]
-        if stored
-        else detect_corners((before or after)[0], coach_cfg)
+    from simengineer.coach.trackmap import load_corners
+
+    sess = store.session(session_id)
+    corners = load_corners(store, sess.track, sess.track_length_m) or detect_corners(
+        (before or after)[0], coach_cfg
     )
     return compare_stints(before, after, corners, setup_cfg, mark.description)
 

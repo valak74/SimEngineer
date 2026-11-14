@@ -97,7 +97,7 @@ def say_test(
 
     from simengineer.voice.arbiter import Priority, SpeechArbiter, Utterance
     from simengineer.voice.factory import make_speaker
-    from simengineer.voice.templates import render
+    from simengineer.voice.templates import corner_word, render
 
     cfg = _load(config)
     if null:
@@ -116,7 +116,7 @@ def say_test(
             (Priority.P0, "car_left", render("car_left", lang)),
             (Priority.P0, "stopped", render("stopped_ahead", lang, dist=300)),
             (Priority.P1, "fuel", render("fuel_laps", lang, laps=12)),
-            (Priority.P2, "adv", render("adv_brake_later", lang, n=4, d=12)),
+            (Priority.P2, "adv", render("adv_brake_later", lang, c=corner_word(4, lang), d=12)),
         ]
     )
     for prio, key, phrase in lines:
@@ -484,6 +484,73 @@ def training(
     typer.echo(plan.render(cfg.language))
 
 
+track_app = typer.Typer(
+    help="Virages d'un circuit : noms et bornes éditables.", no_args_is_help=True
+)
+app.add_typer(track_app, name="track")
+
+
+def _track_and_length(store: object, track: str) -> tuple[str, float]:
+    from simengineer.store.db import Store
+
+    assert isinstance(store, Store)
+    sessions = store.sessions(track=track) if track else store.sessions()
+    if not sessions:
+        typer.echo("Aucune séance enregistrée pour ce circuit. Roule d'abord quelques tours.")
+        raise typer.Exit(1)
+    last = sessions[-1]
+    return last.track, last.track_length_m
+
+
+@track_app.command("show")
+def track_show(
+    config: ConfigOpt = None,
+    track: Annotated[str, typer.Option(help="Circuit (défaut : dernière séance).")] = "",
+) -> None:
+    """Affiche les virages utilisés pour un circuit (fichier du pilote ou détection)."""
+    from simengineer.coach.trackmap import load_corners, track_file
+    from simengineer.store.db import Store
+
+    cfg = _load(config)
+    store = Store(cfg.data_dir)
+    name, length = _track_and_length(store, track)
+    corners = load_corners(store, name, length)
+    path = track_file(cfg.data_dir, name)
+    origin = f"fichier {path}" if path.is_file() else "détection automatique"
+    typer.echo(f"{name} ({length:.0f} m) — {origin}")
+    if not corners:
+        typer.echo("Pas encore de virages : roule un tour propre.")
+        return
+    for c in corners:
+        typer.echo(
+            f"  {c.name}  {c.label or '':<24} début {c.start_m:6.0f} m  corde {c.apex_m:6.0f} m"
+            f"  fin {c.end_m:6.0f} m"
+        )
+
+
+@track_app.command("export")
+def track_export(
+    config: ConfigOpt = None,
+    track: Annotated[str, typer.Option(help="Circuit (défaut : dernière séance).")] = "",
+    force: Annotated[bool, typer.Option("--force", help="Écraser le fichier existant.")] = False,
+) -> None:
+    """Crée le fichier éditable des virages (pour les nommer ou corriger leurs bornes)."""
+    from simengineer.coach.trackmap import TrackFileError, export_track_file
+    from simengineer.store.db import Store
+
+    cfg = _load(config)
+    store = Store(cfg.data_dir)
+    name, length = _track_and_length(store, track)
+    try:
+        path = export_track_file(store, name, length, force)
+    except (FileExistsError, TrackFileError) as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1) from exc
+    typer.echo(
+        f"Fichier créé : {path}\nRemplis les « label », puis relance : il sera utilisé partout."
+    )
+
+
 setup_app = typer.Typer(
     help="Conseiller de setup (tu appliques les réglages toi-même).", no_args_is_help=True
 )
@@ -496,7 +563,8 @@ def setup_diagnose(
     session: Annotated[int | None, typer.Option(help="Session (défaut : la dernière).")] = None,
 ) -> None:
     """Diagnostic sous/survirage par phase et pneus, sur les tours propres de la session."""
-    from simengineer.coach.corners import Corner, detect_corners
+    from simengineer.coach.corners import detect_corners
+    from simengineer.coach.trackmap import load_corners
     from simengineer.setup.diagnosis import diagnose
     from simengineer.setup.guide import render_diagnosis
     from simengineer.store.db import Store
@@ -508,9 +576,9 @@ def setup_diagnose(
     if not grids:
         typer.echo("Aucun tour propre dans cette session.")
         raise typer.Exit(1)
-    stored = store.kv_get(f"trackmap:{store.session(sid).track}")
-    corners = (
-        [Corner.from_dict(c) for c in stored] if stored else detect_corners(grids[0], cfg.coach)
+    sess = store.session(sid)
+    corners = load_corners(store, sess.track, sess.track_length_m) or detect_corners(
+        grids[0], cfg.coach
     )
     temps = store.kv_get(f"tyres:{sid}") or {}
     result = diagnose(grids, corners, cfg.setup, {k: (v[0], v[1], v[2]) for k, v in temps.items()})

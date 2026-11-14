@@ -12,7 +12,7 @@ from simengineer.coach.corners import Corner
 from simengineer.coach.metrics import CornerMetrics, lap_metrics
 from simengineer.core.config import CoachConfig
 from simengineer.telemetry.resample import GridLap
-from simengineer.voice.templates import fmt_num, render
+from simengineer.voice.templates import corner_word, fmt_num, render
 
 MS_TO_KMH = 3.6
 
@@ -104,9 +104,10 @@ def find_issues(d: CornerDelta, cfg: CoachConfig) -> list[tuple[str, float, dict
 def make_advice(
     corner: Corner, issue: str, gain_s: float, params: dict[str, Any], lang: str
 ) -> Advice:
-    short = render(f"adv_{issue}", lang, n=corner.number, **params)
+    spoken = corner_word(corner.number, lang, corner.label)
+    short = render(f"adv_{issue}", lang, c=spoken, n=corner.number, **params)
     gain = fmt_num(gain_s, 2, lang)
-    long = render(f"advl_{issue}", lang, c=corner.name, gain=gain, **params)
+    long = render(f"advl_{issue}", lang, c=corner.display, gain=gain, **params)
     return Advice(corner.number, issue, gain_s, params, short, long)
 
 

@@ -107,47 +107,47 @@ TEMPLATES: dict[str, tuple[str, str]] = {
     "lap_none": ("Pas encore de tour chronométré", "No timed lap yet"),
     # --- P2 coaching (≤ 8 mots)
     "adv_brake_later": (
-        "Virage {n}, freine {d} mètres plus tard",
-        "Turn {n}, brake {d} meters later",
+        "{c}, freine {d} mètres plus tard",
+        "{c}, brake {d} meters later",
     ),
     "adv_brake_earlier": (
-        "Virage {n}, freine {d} mètres plus tôt",
-        "Turn {n}, brake {d} meters earlier",
+        "{c}, freine {d} mètres plus tôt",
+        "{c}, brake {d} meters earlier",
     ),
     "adv_brake_harder": (
-        "Virage {n}, freine plus fort à l'attaque",
-        "Turn {n}, hit the brake harder",
+        "{c}, freine plus fort à l'attaque",
+        "{c}, hit the brake harder",
     ),
     "adv_brake_faster": (
-        "Virage {n}, monte en pression plus vite",
-        "Turn {n}, build brake pressure faster",
+        "{c}, monte en pression plus vite",
+        "{c}, build brake pressure faster",
     ),
     "adv_trail_more": (
-        "Virage {n}, relâche le frein plus progressivement",
-        "Turn {n}, trail the brake off slower",
+        "{c}, relâche le frein plus progressivement",
+        "{c}, trail the brake off slower",
     ),
     "adv_min_speed": (
-        "Virage {n}, garde {kmh} km/h de plus",
-        "Turn {n}, carry {kmh} more km/h",
+        "{c}, garde {kmh} km/h de plus",
+        "{c}, carry {kmh} more km/h",
     ),
     "adv_throttle_earlier": (
-        "Virage {n}, gaz {d} mètres plus tôt",
-        "Turn {n}, throttle {d} meters earlier",
+        "{c}, gaz {d} mètres plus tôt",
+        "{c}, throttle {d} meters earlier",
     ),
-    "adv_exit_speed": ("Virage {n}, soigne la sortie", "Turn {n}, focus on the exit"),
+    "adv_exit_speed": ("{c}, soigne la sortie", "{c}, focus on the exit"),
     "adv_steering": (
-        "Virage {n}, moins de corrections au volant",
-        "Turn {n}, fewer steering corrections",
+        "{c}, moins de corrections au volant",
+        "{c}, fewer steering corrections",
     ),
     "adv_none": ("Bon tour, continue comme ça", "Good lap, keep it up"),
     # Rappels du mode entraînement (≤ 8 mots), dits dans la ligne droite d'approche
-    "call_braking": ("Virage {n}, attaque franche au freinage", "Turn {n}, firm brake hit"),
-    "call_trail": ("Virage {n}, relâche le frein progressivement", "Turn {n}, trail off gently"),
-    "call_min_speed": ("Virage {n}, porte plus de vitesse", "Turn {n}, carry more speed"),
-    "call_throttle": ("Virage {n}, gaz tôt et progressifs", "Turn {n}, early smooth throttle"),
-    "call_smoothness": ("Virage {n}, un seul coup de volant", "Turn {n}, one steering input"),
-    "call_consistency": ("Virage {n}, mêmes repères", "Turn {n}, same markers"),
-    "call_good": ("Virage {n}, c'était bien, pareil", "Turn {n}, good, same again"),
+    "call_braking": ("{c}, attaque franche au freinage", "{c}, firm brake hit"),
+    "call_trail": ("{c}, relâche le frein progressivement", "{c}, trail off gently"),
+    "call_min_speed": ("{c}, porte plus de vitesse", "{c}, carry more speed"),
+    "call_throttle": ("{c}, gaz tôt et progressifs", "{c}, early smooth throttle"),
+    "call_smoothness": ("{c}, un seul coup de volant", "{c}, one steering input"),
+    "call_consistency": ("{c}, mêmes repères", "{c}, same markers"),
+    "call_good": ("{c}, c'était bien, pareil", "{c}, good, same again"),
     "training_on": (
         "Mode entraînement : {theme}, virages {corners}",
         "Training mode: {theme}, turns {corners}",
@@ -205,6 +205,16 @@ _LANG = {"fr": 0, "en": 1}
 def render(key: str, lang: str = "fr", **params: Any) -> str:
     fr_en = TEMPLATES[key]
     return fr_en[_LANG.get(lang, 0)].format(**params)
+
+
+SPOKEN_LABEL_MAX_WORDS = 3
+
+
+def corner_word(number: int, lang: str = "fr", label: str = "") -> str:
+    """Nom prononcé d'un virage : son nom s'il est court (≤ 3 mots), sinon « Virage N »."""
+    if label and len(label.split()) <= SPOKEN_LABEL_MAX_WORDS:
+        return label
+    return f"Virage {number}" if lang == "fr" else f"Turn {number}"
 
 
 def word_count(text: str) -> int:

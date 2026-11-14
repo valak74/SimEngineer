@@ -142,7 +142,7 @@ def track_shape(grid: GridLap, corners: list[dict[str, Any]]) -> dict[str, Any] 
         "length_m": grid.track_length_m,
         "corners": [
             {
-                "name": f"T{int(c['number']):02d}",
+                "name": c.get("label") or f"T{int(c['number']):02d}",
                 "i": min(int(c["apex_m"] / (step * grid.step)), n - 1),
             }
             for c in corners

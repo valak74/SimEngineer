@@ -11,10 +11,11 @@ import dataclasses
 from pathlib import Path
 from typing import Any
 
-from simengineer.coach.corners import Corner, detect_corners
+from simengineer.coach.corners import detect_corners
 from simengineer.coach.pipeline import reanalyze_session
 from simengineer.coach.profile import build_profile
 from simengineer.coach.report import build_session_summary, issue_label, theme_label
+from simengineer.coach.trackmap import load_corners
 from simengineer.coach.training import build_plan
 from simengineer.core.config import CoachConfig, SetupConfig
 from simengineer.reference.store import list_references
@@ -139,9 +140,9 @@ def setup_view(
         ]
         out: dict[str, Any] = {"id": sid, "laps": len(grids), "guide": apply_guide(lang)}
         if grids:
-            stored = store.kv_get(f"trackmap:{store.session(sid).track}")
-            corners = (
-                [Corner.from_dict(c) for c in stored] if stored else detect_corners(grids[0], coach)
+            sess = store.session(sid)
+            corners = load_corners(store, sess.track, sess.track_length_m) or detect_corners(
+                grids[0], coach
             )
             temps = store.kv_get(f"tyres:{sid}") or {}
             d = diagnose(grids, corners, setup, {k: (v[0], v[1], v[2]) for k, v in temps.items()})
@@ -219,8 +220,7 @@ def lap_trace(
             label = f"tour {best.number}"
             ref = store.load_grid(best.npz_path or "")
         ref = match_grid(ref, grid)
-        stored = store.kv_get(f"trackmap:{sess.track}")
-        corners = [Corner.from_dict(c) for c in stored] if stored else detect_corners(ref, coach)
+        corners = load_corners(store, sess.track, sess.track_length_m) or detect_corners(ref, coach)
         analysis = analyze_lap(grid, ref, corners, coach, lang, label)
         k = max(1, int(TRACE_STEP_M / grid.step))
 
@@ -252,6 +252,7 @@ def lap_trace(
             "corners": [
                 {
                     "name": c.name,
+                    "label": c.label,
                     "start_m": c.start_m,
                     "apex_m": c.apex_m,
                     "end_m": c.end_m,

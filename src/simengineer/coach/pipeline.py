@@ -134,8 +134,9 @@ def reanalyze_session(
     else:
         best = min(rows, key=lambda r: r.lap_time)
         label, ref, skip = f"tour {best.number}", grids[best.number], best.number
-    stored = store.kv_get(f"trackmap:{sess.track}")
-    corners = [Corner.from_dict(c) for c in stored] if stored else detect_corners(ref, cfg)
+    from simengineer.coach.trackmap import load_corners
+
+    corners = load_corners(store, sess.track, sess.track_length_m) or detect_corners(ref, cfg)
     return label, [
         analyze_lap(grid, ref, corners, cfg, lang, label)
         for number, grid in grids.items()
