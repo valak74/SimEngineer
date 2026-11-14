@@ -190,7 +190,7 @@ class RaceEngineer:
         if lap.valid and (best is None or lap.lap_time < best):
             st.best_lap_time = lap.lap_time
             return self._utt("lap_best", "lap_time", 0.0, time=text_time)
-        if best is None:
+        if best is None or abs(lap.lap_time - best) < 0.005:
             return self._utt("lap_time", "lap_time", 0.0, time=text_time)
         delta = fmt_delta(lap.lap_time - best, self.lang)
         return self._utt("lap_time_delta", "lap_time", 0.0, time=text_time, delta=delta)

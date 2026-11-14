@@ -151,6 +151,30 @@ class Store:
     def load_grid(self, npz_path: str) -> GridLap:
         return load_grid_npz(self.data_dir / npz_path)
 
+    # --- résultats par virage
+    def add_corner_results(
+        self, session_id: int, lap_id: int, rows: list[tuple[int, float, str, dict[str, Any]]]
+    ) -> None:
+        """rows : (numéro de virage, temps perdu, défaut principal ou "", métriques)."""
+        self.db.executemany(
+            "INSERT INTO corner_results (session_id, lap_id, corner, loss_s, issue, metrics)"
+            " VALUES (?,?,?,?,?,?)",
+            [(session_id, lap_id, c, loss, issue, json.dumps(m)) for c, loss, issue, m in rows],
+        )
+        self.db.commit()
+
+    def corner_results(self, session_id: int) -> list[dict[str, Any]]:
+        out = []
+        for r in self.db.execute(
+            "SELECT lap_id, corner, loss_s, issue, metrics FROM corner_results"
+            " WHERE session_id=? ORDER BY lap_id, corner",
+            (session_id,),
+        ):
+            d = dict(r)
+            d["metrics"] = json.loads(d["metrics"])
+            out.append(d)
+        return out
+
     # --- clé/valeur JSON (cartes de virages, seuils calibrés…)
     def kv_set(self, key: str, value: Any) -> None:
         self.db.execute(

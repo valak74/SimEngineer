@@ -90,7 +90,7 @@ class CoachConfig(_Section):
     brake_point_m: float = 6.0
     brake_peak: float = 0.08
     brake_rise_s: float = 0.08
-    trail_ratio: float = 0.15
+    trail_m: float = 8.0
     min_speed_kmh: float = 2.5
     throttle_pickup_m: float = 6.0
     exit_speed_kmh: float = 3.0
