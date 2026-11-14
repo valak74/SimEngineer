@@ -111,6 +111,34 @@ def test_live_snapshot_during_race_and_history_pages(served: Any) -> None:
     assert get_json(server, f"/api/setup/{sid}")["comparison"]["verdict"] == "not_enough_laps"
 
 
+def test_lap_trace_api(served: Any, tmp_path: Any) -> None:
+    from simengineer.sources.synthetic import CornerStyle, Scenario, lap_style
+
+    cfg, server = served
+    slow = lap_style(c2=CornerStyle(brake_offset_m=-14.0))
+    sc = Scenario(n_laps=5, lap_styles=((1, slow), (3, slow)), offtracks=((2, 0.5, 0.52),))
+    sid = SimEngineerApp(cfg, SyntheticSource(sc)).run()
+    t = get_json(server, f"/api/sessions/{sid}/laps/2/trace")
+    assert t["ref_label"] == "tour 1" and t["step_m"] == 2.0 and t["length_m"] == 4200.0
+    n = len(t["delta"])
+    assert n == 2100
+    for ch in ("speed", "throttle", "brake", "steering", "gear"):
+        assert len(t["lap_ch"][ch]) == n and len(t["ref_ch"][ch]) == n
+    assert max(t["lap_ch"]["speed"]) < 300 and max(t["lap_ch"]["brake"]) <= 100
+    # le delta cumulé vaut 0 au départ et grossit dans la zone du T03
+    t03 = next(c for c in t["corners"] if c["name"] == "T03")
+    before, after = int(t03["zone_start_m"] / 2) - 1, int(t03["zone_end_m"] / 2) - 1
+    assert abs(t["delta"][0]) < 1e-3 and abs(t["delta"][before]) < 0.01
+    assert t["delta"][after] == pytest.approx(t03["loss_s"], abs=0.02) and t03["loss_s"] > 0.3
+    assert t["advice"][0]["corner"] == "T03"
+    best = get_json(server, f"/api/sessions/{sid}/laps/1/trace")  # tour de réf. : vs 2e meilleur
+    assert best["ref_label"] == "tour 2"  # 2e meilleur tour valide
+    invalid = get_json(server, f"/api/sessions/{sid}/laps/3/trace")  # hors-piste : traçable
+    assert invalid["valid"] is False
+    assert get(server, f"/api/sessions/{sid}/laps/99/trace")[0] == 404
+    assert get(server, f"/api/sessions/{sid}/laps/x/trace")[0] == 404
+
+
 def test_sse_stream_pushes_snapshots(served: Any) -> None:
     _, server = served
     with urllib.request.urlopen(f"http://127.0.0.1:{server.port}/api/live/stream", timeout=10) as r:

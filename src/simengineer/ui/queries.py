@@ -22,6 +22,7 @@ from simengineer.setup.compare import compare_mark, list_marks
 from simengineer.setup.diagnosis import diagnose
 from simengineer.setup.guide import apply_guide, describe, suggestions
 from simengineer.store.db import Store
+from simengineer.telemetry.resample import GridLap
 
 
 def _store(data_dir: str) -> Store:
@@ -173,5 +174,97 @@ def references(data_dir: str) -> list[dict[str, Any]]:
     store = _store(data_dir)
     try:
         return [dataclasses.asdict(r) for r in list_references(store)]
+    finally:
+        store.close()
+
+
+TRACE_STEP_M = 2.0
+
+
+def _round(values: Any, nd: int) -> list[float]:
+    return [round(float(v), nd) for v in values]
+
+
+def lap_trace(
+    data_dir: str, sid: int, lap_number: int, coach: CoachConfig, lang: str
+) -> dict[str, Any]:
+    """Canaux d'un tour et de la référence sur la même grille, pour les traces superposées.
+
+    Référence : tour importé pour ce circuit/voiture, sinon meilleur tour valide de la séance
+    (si l'on affiche ce meilleur tour lui-même : le deuxième meilleur).
+    """
+    import numpy as np
+
+    from simengineer.coach.pipeline import analyze_lap, match_grid
+    from simengineer.reference.select import select_reference
+
+    store = _store(data_dir)
+    try:
+        sess = store.session(sid)
+        rows = {r.number: r for r in store.laps(sid) if r.npz_path}
+        if lap_number not in rows:
+            raise KeyError(f"Tour {lap_number} introuvable dans la séance {sid}")
+        grid = store.load_grid(rows[lap_number].npz_path or "")
+        chosen = select_reference(store, sess.track, sess.car)
+        if chosen is not None:
+            label, ref = chosen[0].label, chosen[1]
+        else:
+            valid = sorted(
+                (r for r in rows.values() if r.valid and r.number != lap_number),
+                key=lambda r: r.lap_time,
+            )
+            if not valid:
+                raise KeyError("Aucun autre tour valide pour comparer")
+            best = valid[0]
+            label = f"tour {best.number}"
+            ref = store.load_grid(best.npz_path or "")
+        ref = match_grid(ref, grid)
+        stored = store.kv_get(f"trackmap:{sess.track}")
+        corners = [Corner.from_dict(c) for c in stored] if stored else detect_corners(ref, coach)
+        analysis = analyze_lap(grid, ref, corners, coach, lang, label)
+        k = max(1, int(TRACE_STEP_M / grid.step))
+
+        def channels(g: GridLap) -> dict[str, list[float]]:
+            out = {
+                "speed": _round(g.ch("speed")[::k] * 3.6, 1),
+                "throttle": _round(np.clip(g.ch("throttle")[::k], 0, 1) * 100.0, 0),
+                "brake": _round(np.clip(g.ch("brake")[::k], 0, 1) * 100.0, 0),
+                "steering": _round(np.degrees(g.ch("steering")[::k]), 1),
+            }
+            if g.has("gear"):
+                out["gear"] = _round(g.ch("gear")[::k], 0)
+            return out
+
+        delta = grid.ch("time") - ref.ch("time")
+        losses = {d.corner.number: d.loss_s for d in analysis.deltas}
+        return {
+            "session": sid,
+            "lap": lap_number,
+            "valid": rows[lap_number].valid,
+            "lap_time": grid.lap_time,
+            "ref_label": label,
+            "ref_time": ref.lap_time,
+            "step_m": grid.step * k,
+            "length_m": grid.track_length_m,
+            "lap_ch": channels(grid),
+            "ref_ch": channels(ref),
+            "delta": _round(delta[::k], 3),
+            "corners": [
+                {
+                    "name": c.name,
+                    "start_m": c.start_m,
+                    "apex_m": c.apex_m,
+                    "end_m": c.end_m,
+                    "zone_start_m": c.zone_start_m,
+                    "zone_end_m": c.zone_end_m,
+                    "loss_s": round(losses.get(c.number, 0.0), 3),
+                }
+                for c in corners
+            ],
+            "advice": [
+                {"corner": f"T{a.corner:02d}", "gain_s": round(a.gain_s, 3), "text": a.long}
+                for a in analysis.advice
+            ],
+        }
     finally:
         store.close()

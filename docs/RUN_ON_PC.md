@@ -69,6 +69,8 @@ Dans la suite, `simengineer` = `.\.venv\Scripts\simengineer.exe`.
 | 30 | Interface : `simengineer run --source live` ouvre `http://127.0.0.1:8765/` dans le navigateur | onglet Direct « En attente » puis « En direct » en piste ; delta, carburant, stand, radio, carte du circuit après le premier tour de référence | capture d'écran ; éléments faux ou illisibles |
 | 31 | FPS iRacing avec l'interface ouverte sur le **même** PC, puis sur une tablette/téléphone (`ui.host = "0.0.0.0"` dans `simengineer.toml`, puis `http://<IP-du-PC>:8765/`, autoriser le port dans le pare-feu Windows) | pas de baisse de FPS notable ; mise à jour fluide | FPS sans / avec interface locale / avec tablette |
 | 32 | `simengineer perf --source live --with-ui --seconds 120`, interface ouverte | « Dans le budget : OUI » | les lignes affichées |
+| 33 | Mode entraînement : `simengineer run --source live --training`, 10 tours après au moins une séance analysée sur ce circuit | « Mode entraînement : <thème>, virages … » puis, à chaque tour, le rappel arrive dans la ligne droite AVANT le freinage, jamais en plein virage | rappels trop tôt / trop tard (`coach.callout_lead_s`, défaut 3,5 s) ; gênant ou utile ? |
+| 34 | Onglet Séances, clique un tour puis un virage | traces tour/référence lisibles, zoom, réticule qui suit la souris (ou le doigt sur tablette) | capture ; courbes absurdes éventuelles (signe du volant, unités) |
 
 ## C. Variables d'environnement
 
@@ -85,6 +87,7 @@ Changer de fournisseur ou de modèle se fait uniquement dans `simengineer.toml`
 
 ```powershell
 simengineer run --source live            # attend iRacing, puis spotter + ingénieur + coach + dialogue + interface
+simengineer run --source live --training # + rappels vocaux avant les virages du programme
 simengineer ui                           # interface seule (historique : séances, pilote, setup, références)
 simengineer run --source live --null-voice   # sans audio : affiche ce qui serait dit
 simengineer analyze                      # conseils par virage de la dernière session

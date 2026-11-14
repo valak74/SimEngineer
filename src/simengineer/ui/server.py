@@ -179,6 +179,17 @@ class UIServer:
             return 200, self.queries.run(
                 queries.session_detail, data, int(parts[2]), cfg.coach, cfg.language
             )
+        if (
+            len(parts) == 6
+            and parts[:2] == ["api", "sessions"]
+            and parts[3] == "laps"
+            and parts[5] == "trace"
+            and parts[2].isdigit()
+            and parts[4].isdigit()
+        ):
+            return 200, self.queries.run(
+                queries.lap_trace, data, int(parts[2]), int(parts[4]), cfg.coach, cfg.language
+            )
         if len(parts) == 3 and parts[:2] == ["api", "setup"] and parts[2].isdigit():
             return 200, self.queries.run(
                 queries.setup_view, data, int(parts[2]), cfg.setup, cfg.coach, cfg.language

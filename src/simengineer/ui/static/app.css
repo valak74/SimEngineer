@@ -277,6 +277,46 @@ pre.guide { white-space: pre-wrap; font-family: var(--font); color: var(--muted)
 @keyframes scan { from { background-position: -100% 0; } to { background-position: 200% 0; } }
 footer { position: relative; z-index: 1; text-align: center; color: var(--dim); font-size: 11px; letter-spacing: 0.18em; padding: 0 0 26px; text-transform: uppercase; }
 
+/* traces superposées */
+.zoom { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.zoom button { all: unset; cursor: pointer; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; padding: 6px 11px; border: 1px solid var(--line-2); color: var(--muted); background: var(--panel-2); }
+.zoom button:hover { color: var(--text); }
+.zoom button.sel { color: #04131a; background: var(--accent); border-color: var(--accent); }
+.zoom button.lose:not(.sel) { color: var(--bad); border-color: rgba(255, 61, 94, 0.45); }
+.zoom button.win:not(.sel) { color: var(--ok); border-color: rgba(45, 255, 160, 0.4); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13px; color: var(--muted); margin-bottom: 12px; align-items: center; }
+.legend i { display: inline-block; width: 22px; height: 0; vertical-align: middle; margin-right: 8px; }
+.legend .lg-lap { border-top: 2px solid var(--accent); }
+.legend .lg-ref { border-top: 2px dashed rgba(232, 242, 255, 0.6); }
+.traces { position: relative; user-select: none; touch-action: pan-y; }
+.lane { position: relative; height: 22px; margin-left: 92px; margin-bottom: 4px; }
+.lane .zone { position: absolute; top: 0; height: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; display: flex; align-items: center; justify-content: center; color: var(--muted); background: rgba(255, 255, 255, 0.04); border-top: 2px solid var(--dim); overflow: hidden; }
+.lane .zone.lose { color: var(--bad); border-top-color: var(--bad); background: rgba(255, 61, 94, 0.08); }
+.lane .zone.win { color: var(--ok); border-top-color: var(--ok); background: rgba(45, 255, 160, 0.06); }
+.panel { display: grid; grid-template-columns: 92px 1fr; align-items: stretch; border-top: 1px solid var(--line); }
+.plabel { display: flex; flex-direction: column; justify-content: center; gap: 2px; padding-right: 10px; font-size: 11px; color: var(--dim); letter-spacing: 0.08em; }
+.plabel b { color: var(--muted); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 600; }
+.plabel .range { font-variant-numeric: tabular-nums; }
+svg.plot { width: 100%; display: block; overflow: hidden; }
+svg.plot path, svg.plot line { vector-effect: non-scaling-stroke; fill: none; }
+svg.plot .czone { fill: rgba(255, 255, 255, 0.025); }
+svg.plot .zero { stroke: var(--dim); stroke-width: 1; stroke-dasharray: 3 4; }
+svg.plot .ln-lap { stroke: var(--accent); stroke-width: 1.8; }
+svg.plot .ln-ref { stroke: rgba(232, 242, 255, 0.55); stroke-width: 1.4; stroke-dasharray: 5 4; }
+svg.plot .ln-delta { stroke: #e8f2ff; stroke-width: 1.6; }
+svg.plot path.area-lose { fill: rgba(255, 61, 94, 0.28); stroke: none; }
+svg.plot path.area-win { fill: rgba(45, 255, 160, 0.22); stroke: none; }
+.axis { position: relative; height: 22px; margin-left: 92px; border-top: 1px solid var(--line); font-size: 10px; color: var(--dim); letter-spacing: 0.06em; }
+.axis span { position: absolute; top: 5px; transform: translateX(-50%); white-space: nowrap; }
+.axis span:first-child { transform: none; }
+.axis span:last-child { transform: translateX(-100%); }
+.cursor { position: absolute; top: 26px; bottom: 22px; width: 1px; background: var(--accent); box-shadow: 0 0 8px var(--accent); pointer-events: none; }
+.readout { position: absolute; top: 34px; width: 216px; padding: 8px 10px; background: rgba(6, 8, 12, 0.94); border: 1px solid var(--line-2); pointer-events: none; z-index: 2; }
+.readout table { font-size: 12px; }
+.readout td, .readout th { padding: 3px 4px; border: 0; }
+.advice li.click { cursor: pointer; }
+.advice li.click:hover { border-color: var(--line-2); }
+
 @media (max-width: 1180px) {
   .s2, .s3 { grid-column: span 6; }
   .s4, .s5, .s7, .s8 { grid-column: span 12; }
@@ -292,6 +332,9 @@ footer { position: relative; z-index: 1; text-align: center; color: var(--dim); 
   .feed { max-height: none; }
   .map-card { min-height: 0; }
   .map-wrap { min-height: 300px; }
+  .panel { grid-template-columns: 58px 1fr; }
+  .lane, .axis { margin-left: 58px; }
+  .plabel .range { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

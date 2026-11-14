@@ -333,7 +333,11 @@ function kpi(label, value, unit = "", cls = "") {
 function renderSessionDetail(el, d) {
   const sm = d.summary;
   const byLap = Object.fromEntries(d.analyses.map((a) => [a.lap, a]));
-  if (state.lap === null || !byLap[state.lap]) state.lap = d.analyses.length ? d.analyses[d.analyses.length - 1].lap : null;
+  const traceable = new Set(sm.laps.filter((l) => !l.flags.includes("incomplete")).map((l) => l.lap));
+  if (state.lap === null || !traceable.has(state.lap)) {
+    state.lap = d.analyses.length ? d.analyses[d.analyses.length - 1].lap : [...traceable].pop() ?? null;
+    state.zoom = null;
+  }
   const head = h("div", { class: "page-head" },
     h("div", {}, h("h1", {}, sm.track), h("div", { class: "c-muted" }, `${sm.car} · ${sm.session_type} · ${sm.date}`)),
     h("div", { class: "c-muted" }, d.ref_label ? `Référence : ${d.ref_label}` : "Pas de référence"));
@@ -360,26 +364,209 @@ function renderSessionDetail(el, d) {
   const lapRows = sm.laps.map((l) => {
     const a = byLap[l.lap];
     const top = a && a.advice.length ? a.advice[0] : null;
-    return h("tr", { class: `${a ? "click" : ""} ${l.lap === state.lap ? "sel" : ""}`, onclick: a ? () => { state.lap = l.lap; renderSessionDetail(el, d); } : null },
+    const ok = traceable.has(l.lap);
+    return h("tr", { class: `${ok ? "click" : ""} ${l.lap === state.lap ? "sel" : ""}`, onclick: ok ? () => { state.lap = l.lap; state.zoom = null; renderSessionDetail(el, d); } : null },
       h("td", {}, l.lap),
       h("td", { class: l.time_s === best ? "c-ok" : "" }, lapTime(l.time_s)),
       h("td", { class: "r" }, a ? signed(a.delta_s, 2) : "—"),
       h("td", {}, l.valid ? h("span", { class: "chip ok" }, l.flags.includes("yellow") ? "valide · jaune" : "valide") : h("span", { class: "chip bad" }, l.flags.map((f) => LAP_FLAGS[f] || f).join(", ") || "invalide")),
       h("td", { class: "c-muted" }, top ? top.short : ""));
   });
-  const laps = h("div", { class: "card" }, h("h3", {}, "Tours", h("span", { class: "r" }, "clique un tour pour ses conseils")),
+  const laps = h("div", { class: "card" }, h("h3", {}, "Tours", h("span", { class: "r" }, "clique un tour : conseils et traces")),
     h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, "Tour"), h("th", {}, "Temps"), h("th", { class: "r" }, "Δ réf."), h("th", {}, "État"), h("th", {}, "Conseil principal"))), h("tbody", {}, lapRows)));
 
   const sel = state.lap !== null ? byLap[state.lap] : null;
   const adviceCard = h("div", { class: "card ok" }, h("h3", {}, sel ? `Conseils · tour ${sel.lap}` : "Conseils", h("span", { class: "r" }, sel ? `${signed(sel.delta_s, 2)} s vs réf.` : "")),
     sel && sel.advice.length
-      ? h("ul", { class: "advice" }, sel.advice.map((a) => h("li", {}, h("span", { class: "cn" }, a.corner), h("span", {}, a.text.replace(/^T\d+ : /, "")), h("span", { class: "gain" }, `−${num(a.gain_s, 2)} s`))))
+      ? h("ul", { class: "advice" }, sel.advice.map((a) => h("li", { class: "click", title: "Voir ce virage dans les traces", onclick: () => zoomTo(a.corner) }, h("span", { class: "cn" }, a.corner), h("span", {}, a.text.replace(/^T\d+ : /, "")), h("span", { class: "gain" }, `−${num(a.gain_s, 2)} s`))))
       : h("div", { class: "empty" }, sel ? "Rien à signaler sur ce tour." : "Pas de tour comparable."),
     sel ? cornerDeltas(sel) : null);
 
+  const traceBox = h("div", { id: "trace-box" });
   el.replaceChildren(head, kpis,
     h("div", { class: "section-title" }, "Analyse"),
-    h("div", { class: "grid" }, h("div", { class: "s7" }, laps), h("div", { class: "s5", style: "display:flex;flex-direction:column;gap:14px" }, adviceCard, corners)));
+    h("div", { class: "grid" }, h("div", { class: "s7" }, laps), h("div", { class: "s5", style: "display:flex;flex-direction:column;gap:14px" }, adviceCard, corners)),
+    h("div", { class: "section-title" }, state.lap !== null ? `Traces · tour ${state.lap}` : "Traces"),
+    traceBox);
+  if (state.lap !== null) loadTrace(traceBox, d.id, state.lap);
+}
+
+/* ---------- traces superposées ---------- */
+const traceCache = new Map();
+let resizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    const box = document.getElementById("trace-box");
+    const key = `${state.session}/${state.lap}`;
+    if (box && traceCache.has(key)) renderTraces(box, traceCache.get(key));
+  }, 200);
+});
+const PANELS = [
+  { key: "delta", label: "Delta", unit: "s", h: 110 },
+  { key: "speed", label: "Vitesse", unit: "km/h", h: 170 },
+  { key: "throttle", label: "Gaz", unit: "%", h: 80, min: 0, max: 100 },
+  { key: "brake", label: "Frein", unit: "%", h: 80, min: 0, max: 100 },
+  { key: "steering", label: "Volant", unit: "°", h: 100, sym: true },
+];
+
+async function loadTrace(box, sid, lap) {
+  const key = `${sid}/${lap}`;
+  loading(box);
+  try {
+    if (!traceCache.has(key)) traceCache.set(key, await api(`/api/sessions/${sid}/laps/${lap}/trace`));
+    if (box.isConnected) renderTraces(box, traceCache.get(key));
+  } catch (e) {
+    box.replaceChildren(h("div", { class: "card" }, h("div", { class: "empty" }, "Traces indisponibles : " + String(e))));
+  }
+}
+
+function zoomTo(corner) {
+  state.zoom = corner;
+  const box = $("#trace-box");
+  const key = state.session !== null && state.lap !== null ? `${state.session}/${state.lap}` : null;
+  if (box && key && traceCache.has(key)) {
+    renderTraces(box, traceCache.get(key));
+    box.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+function series(t, key, which) {
+  if (key === "delta") return which === "lap" ? t.delta : null;
+  return (which === "lap" ? t.lap_ch : t.ref_ch)[key] || null;
+}
+
+function renderTraces(box, t) {
+  const n = t.delta.length;
+  const step = t.step_m;
+  const corner = state.zoom ? t.corners.find((c) => c.name === state.zoom) : null;
+  let i0 = 0, i1 = n - 1;
+  if (corner) {
+    i0 = Math.max(0, Math.floor((corner.start_m - 160) / step));
+    i1 = Math.min(n - 1, Math.ceil((corner.end_m + 120) / step));
+  }
+  const span = Math.max(i1 - i0, 1);
+  const X = (i) => ((i - i0) / span) * 1000;
+
+  const zoomBar = h("div", { class: "zoom" },
+    h("button", { class: corner ? "" : "sel", onclick: () => { state.zoom = null; renderTraces(box, t); } }, "Tour complet"),
+    ...t.corners.map((c) => h("button", {
+      class: `${corner && corner.name === c.name ? "sel" : ""} ${c.loss_s > 0.03 ? "lose" : c.loss_s < -0.03 ? "win" : ""}`,
+      title: `${signed(c.loss_s, 2)} s vs réf.`,
+      onclick: () => { state.zoom = c.name; renderTraces(box, t); },
+    }, c.name)));
+
+  const legend = h("div", { class: "legend" },
+    h("span", {}, h("i", { class: "lg-lap" }), `Tour ${t.lap} · ${lapTime(t.lap_time)}`),
+    h("span", {}, h("i", { class: "lg-ref" }), `Réf. ${t.ref_label} · ${lapTime(t.ref_time)}`),
+    h("span", { class: t.lap_time - t.ref_time > 0 ? "c-bad" : "c-ok" }, `${signed(t.lap_time - t.ref_time, 3)} s`));
+
+  const wrap = h("div", { class: "traces" });
+  const cursor = h("div", { class: "cursor", hidden: true });
+  const readout = h("div", { class: "readout", hidden: true });
+
+  // bandeau des virages
+  const lane = h("div", { class: "lane" });
+  for (const c of t.corners) {
+    const a = c.start_m / step, b = c.end_m / step;
+    if (b < i0 || a > i1) continue;
+    const left = Math.max(X(a), 0) / 10, right = Math.min(X(b), 1000) / 10;
+    lane.append(h("span", { class: `zone ${c.loss_s > 0.03 ? "lose" : c.loss_s < -0.03 ? "win" : ""}`, style: `left:${left}%;width:${Math.max(right - left, 0.5)}%`, title: `${c.name} : ${signed(c.loss_s, 2)} s` }, c.name));
+  }
+  wrap.append(lane);
+
+  for (const p of PANELS) {
+    const lap = series(t, p.key, "lap");
+    if (!lap) continue;
+    const ref = series(t, p.key, "ref");
+    let lo = p.min, hi = p.max;
+    if (lo === undefined) {
+      const vals = [];
+      for (let i = i0; i <= i1; i++) { vals.push(lap[i]); if (ref) vals.push(ref[i]); }
+      lo = Math.min(...vals); hi = Math.max(...vals);
+      if (p.key === "delta" || p.sym) { const m = Math.max(Math.abs(lo), Math.abs(hi), p.key === "delta" ? 0.05 : 5); lo = -m; hi = m; }
+      const pad = (hi - lo) * 0.08 || 1; lo -= pad; hi += pad;
+    }
+    const H = p.h;
+    const Y = (v) => H - ((v - lo) / (hi - lo)) * H;
+    const path = (arr) => {
+      let d = "";
+      const stride = Math.max(1, Math.floor(span / 1400));
+      for (let i = i0; i <= i1; i += stride) d += `${d ? "L" : "M"}${X(i).toFixed(1)} ${Y(arr[i]).toFixed(1)}`;
+      return d;
+    };
+    const svg = s("svg", { viewBox: `0 0 1000 ${H}`, preserveAspectRatio: "none", class: "plot", style: `height:${H}px` });
+    for (const c of t.corners) {
+      const a = X(c.start_m / step), b = X(c.end_m / step);
+      if (b < 0 || a > 1000) continue;
+      svg.append(s("rect", { x: Math.max(a, 0), y: 0, width: Math.max(Math.min(b, 1000) - Math.max(a, 0), 0), height: H, class: "czone" }));
+    }
+    if (lo < 0 && hi > 0) svg.append(s("line", { x1: 0, x2: 1000, y1: Y(0), y2: Y(0), class: "zero" }));
+    if (p.key === "delta") {
+      const area = `${path(lap)}L${X(i1).toFixed(1)} ${Y(0).toFixed(1)}L${X(i0).toFixed(1)} ${Y(0).toFixed(1)}Z`;
+      const id = `clip${Math.random().toString(36).slice(2, 8)}`;
+      const defs = s("defs");
+      const up = s("clipPath", { id: `${id}u` }); up.append(s("rect", { x: 0, y: 0, width: 1000, height: Y(0) }));
+      const dn = s("clipPath", { id: `${id}d` }); dn.append(s("rect", { x: 0, y: Y(0), width: 1000, height: H }));
+      defs.append(up, dn);
+      svg.append(defs,
+        s("path", { d: area, class: "area-lose", "clip-path": `url(#${id}u)` }),
+        s("path", { d: area, class: "area-win", "clip-path": `url(#${id}d)` }),
+        s("path", { d: path(lap), class: "ln-delta" }));
+    } else {
+      if (ref) svg.append(s("path", { d: path(ref), class: "ln-ref" }));
+      svg.append(s("path", { d: path(lap), class: "ln-lap" }));
+    }
+    const row = h("div", { class: "panel" },
+      h("div", { class: "plabel" }, h("b", {}, p.label), h("span", {}, p.unit),
+        h("span", { class: "range" }, `${num(hi, p.key === "delta" ? 2 : 0)} / ${num(lo, p.key === "delta" ? 2 : 0)}`)),
+      svg);
+    wrap.append(row);
+  }
+
+  // axe des distances
+  const axis = h("div", { class: "axis" });
+  const ticks = (box.clientWidth || 1000) < 640 ? 2 : 5;
+  for (let k = 0; k <= ticks; k++) {
+    const i = i0 + (span * k) / ticks;
+    axis.append(h("span", { style: `left:${(k * 100) / ticks}%` }, `${Math.round(i * step)} m`));
+  }
+  wrap.append(axis, cursor, readout);
+
+  // réticule
+  const move = (clientX) => {
+    const plots = wrap.querySelectorAll(".plot");
+    if (!plots.length) return;
+    const r = plots[0].getBoundingClientRect();
+    const f = Math.min(Math.max((clientX - r.left) / r.width, 0), 1);
+    const i = Math.round(i0 + f * span);
+    cursor.hidden = false; readout.hidden = false;
+    const wr = wrap.getBoundingClientRect();
+    cursor.style.left = `${r.left - wr.left + f * r.width}px`;
+    const rows = [
+      ["Distance", `${Math.round(i * step)} m`, ""],
+      ["Delta", `${signed(t.delta[i], 3)} s`, ""],
+      ["Vitesse", `${num(t.lap_ch.speed[i], 0)}`, `${num(t.ref_ch.speed[i], 0)}`],
+      ["Gaz", `${num(t.lap_ch.throttle[i], 0)} %`, `${num(t.ref_ch.throttle[i], 0)} %`],
+      ["Frein", `${num(t.lap_ch.brake[i], 0)} %`, `${num(t.ref_ch.brake[i], 0)} %`],
+      ["Volant", `${num(t.lap_ch.steering[i], 0)}°`, `${num(t.ref_ch.steering[i], 0)}°`],
+    ];
+    if (t.lap_ch.gear) rows.push(["Rapport", `${t.lap_ch.gear[i]}`, `${t.ref_ch.gear ? t.ref_ch.gear[i] : ""}`]);
+    readout.replaceChildren(h("table", {}, h("thead", {}, h("tr", {}, h("th", {}, ""), h("th", { class: "r c-accent" }, "Tour"), h("th", { class: "r" }, "Réf."))),
+      h("tbody", {}, rows.map(([k, a, b]) => h("tr", {}, h("td", { class: "c-muted" }, k), h("td", { class: "r" }, a), h("td", { class: "r c-muted" }, b))))));
+    const left = r.left - wr.left + f * r.width;
+    readout.style.left = `${left > wr.width - 240 ? left - 230 : left + 14}px`;
+  };
+  wrap.addEventListener("mousemove", (e) => move(e.clientX));
+  wrap.addEventListener("touchmove", (e) => { move(e.touches[0].clientX); e.preventDefault(); }, { passive: false });
+  wrap.addEventListener("mouseleave", () => { cursor.hidden = true; readout.hidden = true; });
+
+  const adv = corner ? t.advice.filter((a) => a.corner === corner.name) : [];
+  box.replaceChildren(h("div", { class: "card" },
+    h("h3", {}, corner ? `Virage ${corner.name}` : "Tour complet", h("span", { class: "r" }, corner ? `${signed(corner.loss_s, 2)} s vs réf. dans ce virage` : "survole pour lire les valeurs · clique un virage pour zoomer")),
+    zoomBar, legend,
+    adv.length ? h("div", { class: "target", style: "margin:0 0 14px" }, adv.map((a) => h("div", {}, a.text))) : null,
+    wrap));
 }
 
 function cornerDeltas(a) {

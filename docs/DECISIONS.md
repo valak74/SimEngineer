@@ -23,3 +23,6 @@
 | D19 | Historique de l'interface calculé dans un processus séparé à basse priorité | règle 4, même si l'on consulte en roulant |
 | D20 | Style sombre futuriste inspiré de Go Setups, sans logo, nom ni ressource de cette marque ; police Bahnschrift (fournie avec Windows) | identité propre, rien à télécharger |
 | D21 | Interface en français uniquement (les textes générés suivent `language`) | simplicité ; traduction ajoutable plus tard |
+| D22 | Rappels d'entraînement en P2, durée de vie 2,5 s, déclenchés ~3,5 s avant le freinage de la référence et jamais avant la sortie du virage précédent ; virage ignoré si la ligne droite fait moins de 2 s | un rappel en retard est pire qu'aucun rappel |
+| D23 | Virages ciblés : programme d'entraînement (profil), sinon points faibles, sinon pires virages du dernier tour ; 3 au maximum | un seul thème par séance |
+| D24 | Traces : grille de 2 m, référence = tour importé, sinon meilleur tour de la séance (2e meilleur si l'on affiche le meilleur) ; tours invalides traçables | lisibilité et poids du JSON (~150 Ko) |
