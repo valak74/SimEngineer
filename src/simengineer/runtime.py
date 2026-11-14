@@ -60,6 +60,8 @@ def attach_dialogue(app: SimEngineerApp) -> None:
             ptt = PushToTalk(
                 button, MicRecorder(cfg.voice.input_device), stt, service.ask, cfg.language,
                 cfg.voice.max_record_s,
+                on_press=lambda: app.arbiter.set_driver_talking(True),
+                on_release=lambda: app.arbiter.set_driver_talking(False),
             )  # fmt: skip
             ptt.start()
         except Exception as exc:  # micro/bouton absents : l'appli continue sans dialogue

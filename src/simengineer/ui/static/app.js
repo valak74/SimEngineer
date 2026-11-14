@@ -196,6 +196,11 @@ function renderLive(snap) {
   $("#c-pit").className = "card s2 " + (cls === "c-bad" ? "bad" : cls === "c-warn" ? "warn" : cls === "c-ok" ? "ok" : "");
 
   // écarts, pneus, météo
+  const rc = snap.race || {};
+  const gainTxt = isNum(rc.gained) && rc.gained !== 0 ? ` (${rc.gained > 0 ? "+" : "−"}${Math.abs(rc.gained)})` : "";
+  setText("lv-pos", isNum(rc.position) ? `P${rc.position}${gainTxt}` : "—", isNum(rc.gained) ? (rc.gained > 0 ? "c-ok" : rc.gained < 0 ? "c-bad" : "") : "");
+  const incLeft = isNum(rc.incident_limit) ? rc.incident_limit - (rc.incidents || 0) : null;
+  setText("lv-inc", isNum(rc.incidents) ? (isNum(rc.incident_limit) ? `${rc.incidents} / ${rc.incident_limit}` : `${rc.incidents}`) : "—", incLeft !== null && incLeft <= 4 ? "c-bad" : "");
   const g = snap.gap || {};
   setText("lv-ahead", isNum(g.ahead_s) ? `${num(g.ahead_s, 1)} s` : "—");
   setText("lv-behind", isNum(g.behind_s) ? `${num(g.behind_s, 1)} s` : "—");

@@ -16,6 +16,8 @@ Tous les noms sont centralisés dans `src/simengineer/core/vars.py` (`VARS`).
 | `Lat`, `Lon` présents en direct (et pas seulement dans les .ibt) ; précision de trajectoire | à vérifier / à mesurer |
 | `CarLeftRight` : 0 off, 1 clear, 2 gauche, 3 droite, 4 des deux côtés, 5 deux à gauche, 6 deux à droite | à vérifier |
 | `CarIdxLapDistPct` (-1 si absente), `CarIdxTrackSurface`, `CarIdxOnPitRoad`, `CarIdxPosition` | à vérifier |
+| `CarIdxF2Time` = écart au leader en secondes (classement), utilisé pour les écarts officiels | à vérifier |
+| `CarIdxPosition` vaut 0 avant le départ / hors classement | à vérifier |
 | `irsdk_TrkLoc` : -1 hors monde, 0 hors-piste, 1 stand, 2 approche stands, 3 en piste | à vérifier |
 | Bits de `SessionFlags` (damier 0x1, blanc 0x2, vert 0x4, jaune 0x8, rouge 0x10, bleu 0x20, débris 0x40, jaune agité 0x100, caution 0x4000, caution agitée 0x8000, noir 0x10000, réparation 0x100000) | à vérifier |
 | `SessionLapsRemainEx` = tours restants en comptant le tour en cours ; 32767 = illimité | à vérifier |
@@ -26,6 +28,8 @@ Tous les noms sont centralisés dans `src/simengineer/core/vars.py` (`VARS`).
 ## B. Infos de session (YAML)
 | Hypothèse | Statut |
 |---|---|
+| `WeekendInfo.WeekendOptions.IncidentLimit` (nombre ou « unlimited ») | à vérifier |
+| `WeekendInfo.TrackPitSpeedLimit` (« 60.00 kph », parfois en mph) | à vérifier |
 | `WeekendInfo.TrackDisplayName`, `WeekendInfo.TrackLength` (« 3.70 km ») | à vérifier |
 | `DriverInfo.DriverCarIdx`, `DriverInfo.DriverCarFuelMaxLtr`, `Drivers[].CarScreenName` | à vérifier |
 | `SessionInfo.Sessions[].SessionType`, `SessionLaps` (« unlimited »), `SessionTime` (« 1800.0000 sec ») | à vérifier |
@@ -62,6 +66,8 @@ Tous les noms sont centralisés dans `src/simengineer/core/vars.py` (`VARS`).
 | Course au temps : tours restants = ceil(temps restant / temps au tour moyen) + 1 (tour en cours) ; l'arrivée dépend en réalité du leader | approximation assumée |
 | Indice de sous-virage : rapport direction/démultiplication 12:1 et empattement 2,46 m (Cup 992), configurables | à vérifier |
 | Usure pneus linéaire par tour entre deux arrêts | approximation assumée |
+| Débit de carburant ∝ (8 % ralenti + 92 % × accélérateur) le long du tour, étalonné sur la conso mesurée ; roue libre ≈ 1,6 m/s² | à vérifier sur la Cup/GT3 (économie annoncée vs réelle) |
+| L'économie estimée d'un lever de pied est réaliste à ±35 % ; le plan est renforcé d'après l'économie réellement mesurée | à vérifier |
 
 ## G. Performance et packaging
 | Hypothèse | Statut |

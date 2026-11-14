@@ -60,3 +60,12 @@ navigateur : sur le PC de jeu, préférer un second écran, une tablette ou un t
   uniquement après relâchement du bouton push-to-talk. Si trop gourmand : interface
   `STTBackend` pour passer à une API de transcription.
 - **LLM** : appels réseau dans le thread de dialogue, jamais dans la boucle 60 Hz.
+
+## Après l'ingénieur complet (économie, course, qualification, tendance)
+
+`simengineer perf --seconds 90 --with-ui`, scénario `perf` : **2,0 à 2,3 % d'un cœur** selon la
+mesure (machine virtuelle bruitée), **104 à 108 Mo**. Le profil montre que la boucle elle-même ne
+coûte que **0,07 ms par image** (0,4 % d'un cœur à 60 Hz) : le reste vient des réveils à 60 Hz,
+des threads (voix, dialogue, interface) et du serveur. La mémoire inclut la séance synthétique
+entière préchargée ; avec la source `live`, rien n'est préchargé. Marge restante sous le budget :
+~0,7 point de CPU — à confirmer sur le PC (`simengineer perf --source live --with-ui`).

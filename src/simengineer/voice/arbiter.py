@@ -7,6 +7,7 @@ périmés, limite de 8 mots pour P0/P2. Aucune E/S ici : le `Speaker` est inject
 
 from __future__ import annotations
 
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -68,6 +69,10 @@ class SpeechArbiter:
         self._current: Utterance | None = None
         self.spoken: list[Utterance] = []  # historique (tests, rapport)
         self.dropped = 0
+        # Bouton push-to-talk enfoncé : l'ingénieur se tait (sauf danger). Posé depuis le
+        # thread du push-to-talk, lu dans la boucle : un Event suffit.
+        self._driver_talking = threading.Event()
+        self._cut_pending = threading.Event()
 
     # --- soumission
     def submit(self, utt: Utterance) -> bool:
@@ -106,9 +111,24 @@ class SpeechArbiter:
         self._speak(utt)
         return True
 
+    def set_driver_talking(self, talking: bool) -> None:
+        """Appelé par le push-to-talk : appui = l'ingénieur se tait, relâche = il reprend."""
+        if talking:
+            self._driver_talking.set()
+            self._cut_pending.set()
+        else:
+            self._driver_talking.clear()
+
     # --- boucle
     def tick(self, ctx: SpeechContext | None = None) -> Utterance | None:
         """À appeler régulièrement : parle le prochain énoncé éligible, s'il y en a un."""
+        if self._cut_pending.is_set():
+            self._cut_pending.clear()
+            cur = self._current
+            if cur is not None and cur.priority is not Priority.P0 and self._speaker.busy():
+                self._speaker.stop()
+        if self._driver_talking.is_set():
+            return None  # pendant que le pilote parle : rien (les dangers passent par submit)
         if not self._queue:
             return None
         now = self._clock()

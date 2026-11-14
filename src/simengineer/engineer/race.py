@@ -26,6 +26,7 @@ GAP_TREND_LAPS = 3
 GAP_TREND_MIN_RATE_S = 0.15  # s par tour
 GAP_TREND_MAX_GAP_S = 5.0
 SECTORS = (1 / 3, 2 / 3)
+CHECKERED = int(Flags.CHECKERED)  # entier : évite le coût d'un IntFlag à chaque image
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,7 +108,7 @@ class RaceMonitor:
         out: list[Utterance] = []
         self._incidents(f, out)
         self._pit_lane(f, out)
-        if f.session_flags & Flags.CHECKERED:
+        if f.session_flags & CHECKERED:
             self._checkered = True
         if self.info.is_race and not self._briefed and f.speed > 5.0 and not f.on_pit_road:
             self._briefed = True

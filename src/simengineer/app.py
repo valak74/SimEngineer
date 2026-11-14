@@ -87,6 +87,7 @@ class SimEngineerApp:
         self.spotter: Spotter | None = None
         self.coach_cfg = cfg.coach
         self._delta_ref: GridLap | None = None
+        self._trend: Any = None
         self._delta: Any = None
         self.frames = 0
         self.max_frame_ms = 0.0
@@ -361,6 +362,12 @@ class SimEngineerApp:
             if coach.training is not None and res.analysis is not None:
                 coach.training.update_from_analysis(res.analysis)
         if res.analysis is not None and announce and self.cfg.coach.enabled:
+            if self._trend is None:
+                from simengineer.coach.trend import CornerTrend
+
+                self._trend = CornerTrend(self.cfg.language, labels(coach.corners))
+            for utt in self._trend.add(res.analysis):
+                self.arbiter.submit(utt)
             # En entraînement, les virages ciblés sont rappelés AVANT le virage : le débrief
             # ne les répète pas.
             focus = coach.training.active_corners if coach.training else []

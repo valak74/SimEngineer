@@ -45,11 +45,14 @@ Spotter vocal · stratégie carburant et stands · coach par virage · dialogue 
 | | Fonction | En bref |
 |---|---|---|
 | 🛡️ | **Spotter** | « Voiture à gauche / à droite », « Libre », voiture arrêtée ou hors-piste devant (avec la distance), accident, drapeaux, sortie de piste, **voiture plus rapide qui arrive derrière** (multiclasse). Règles pures, sans réseau, donnée → parole en moins de 200 ms. |
-| ⛽ | **Ingénieur de course** | Consommation sur les tours propres, tours possibles, litres à ajouter, **fenêtre de stand** (course aux tours ou au temps, plusieurs arrêts, neutralisation longue), pneus, météo, écarts. |
-| 🎯 | **Coach par virage** | Points de freinage, pression, montée en pression, trail-braking, vitesses d'entrée/mini/sortie, reprise des gaz, corrections de volant, comparés à une référence. Conseils chiffrés et classés par temps gagné : *« L'Épingle, freine 12 mètres plus tard »*. |
+| ⛽ | **Ingénieur de course** | Consommation sur les tours propres, tours possibles, litres à ajouter, **fenêtre de stand** (course aux tours ou au temps, plusieurs arrêts, neutralisation longue), pneus, météo. |
+| 🍃 | **Économie de carburant** | S'il manque un peu de carburant : objectif par tour et **lever de pied chiffré par virage** (*« lève le pied 70 mètres avant La Source »*), verdict à chaque tour, renfort si besoin, ou retour à un arrêt si l'économie ne suffit plus. |
+| 🏁 | **Conscience de course** | Briefing de départ (carburant nécessaire d'après tes séances), position et places gagnées, écarts au classement et leur tendance (*« Derrière à 0,8, il reprend 0,3 par tour »*), incidents face à la limite, limite et excès de vitesse dans les stands, derniers tours, débrief à l'arrivée. |
+| ⏱️ | **Qualification** | Tour de lancement, « tour lancé », delta par secteur. |
+| 🎯 | **Coach par virage** | Points de freinage, pression, montée en pression, trail-braking, vitesses d'entrée/mini/sortie, reprise des gaz, corrections de volant, comparés à une référence. Conseils chiffrés et classés par temps gagné : *« L'Épingle, freine 12 mètres plus tard »*. Repère aussi un virage qui se dégrade : *« L'Épingle, 0,5 seconde perdue depuis 3 tours »*. |
 | 🏋️ | **Mode entraînement** | Un thème par séance (programme issu de ton profil). Rappel vocal **dans la ligne droite, avant** chaque virage ciblé, chiffré d'après ton tour précédent. |
 | 📈 | **Traces superposées** | Ton tour contre la référence : delta cumulé, vitesse, gaz, frein, volant, rapport. Zoom par virage, réticule de lecture. |
-| 🎙️ | **Dialogue push-to-talk** | Bouton de volant ou touche → transcription locale → réponse courte. Le LLM ne calcule rien : il lit des chiffres déjà calculés. Sans LLM, tout marche par gabarits. |
+| 🎙️ | **Dialogue push-to-talk** | Bouton de volant ou touche → transcription locale → réponse courte. Appuyer coupe l'ingénieur (sauf alerte de danger). Le LLM ne calcule rien : il lit des chiffres déjà calculés. Sans LLM, tout marche par gabarits. |
 | ⛽🔧 | **Commandes de stand** | « Mets 20 litres » → *« 20 litres au prochain arrêt, je valide ? »* → « oui ». Désactivées par défaut. |
 | 🧭 | **Références** | Import de tes tours `.ibt` ou CSV (provenance et droits obligatoires), delta en temps réel, sélection automatique même circuit / même voiture. |
 | 👤 | **Profil et programme** | Tendances par virage sur plusieurs séances, thème dominant, exercices et objectif mesurable. Seuils du coach calibrés sur ta régularité. |
@@ -288,10 +291,9 @@ Mesures reproductibles avec `simengineer perf` (détail dans [`docs/PERF.md`](do
 
 | Mesure (simulé, 20 voitures) | Valeur | Budget |
 |---|---|---|
-| CPU du collecteur | 1,5 à 1,7 % d'un cœur | < 3 % |
-| Mémoire du collecteur | 80 à 87 Mo | < 150 Mo |
-| Temps par image | 0,1 ms en moyenne | 16,7 ms |
-| Avec l'interface et un navigateur connecté | 1,5 % / 87 Mo | idem |
+| CPU du collecteur (avec l'interface et un navigateur connecté) | 2 à 2,3 % d'un cœur | < 3 % |
+| Mémoire du collecteur | ~105 Mo | < 150 Mo |
+| Temps de calcul par image | 0,07 ms (le reste : réveils 60 Hz, threads, serveur) | 16,7 ms |
 
 À confirmer en conditions réelles : `simengineer perf --source live --with-ui`.
 

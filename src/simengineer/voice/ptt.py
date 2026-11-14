@@ -112,6 +112,7 @@ class PushToTalk:
         max_record_s: float = 12.0,
         poll_s: float = 0.02,
         on_press: Callable[[], None] | None = None,
+        on_release: Callable[[], None] | None = None,
     ) -> None:
         self._button = button
         self._recorder = recorder
@@ -121,6 +122,7 @@ class PushToTalk:
         self._max = max_record_s
         self._poll = poll_s
         self._on_press = on_press
+        self._on_release = on_release
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._run, name="ptt", daemon=True)
 
@@ -153,6 +155,8 @@ class PushToTalk:
         ):
             time.sleep(self._poll)
         pcm = self._recorder.stop()
+        if self._on_release:
+            self._on_release()
         if len(pcm) < STT_SAMPLE_RATE * 0.3:  # appui trop bref : ignoré
             return
         text = self._stt.transcribe(pcm, STT_SAMPLE_RATE, self._lang).strip()

@@ -16,6 +16,7 @@
 | 11 Interface | fait | interface web locale sombre/futuriste : Direct (delta, tour, carburant, stand, carte du circuit avec voitures, radio, coach, écarts, pneus, météo), Séances, Pilote, Setup, Références ; 1,5 % d'un cœur et 87 Mo avec un client connecté ; rendu vérifié par captures (Chromium), pas encore sur le PC |
 | 12 Entraînement + traces | fait | mode entraînement (`run --training`) : rappel vocal ≤ 8 mots dans la ligne droite ~3,5 s avant le freinage des virages du programme, chiffré par le dernier tour ; traces superposées tour/référence dans Séances (delta, vitesse, gaz, frein, volant), zoom par virage, réticule |
 | 13 Fiabilité et GT3 | fait | CI Windows + Ubuntu ; confirmation vocale des commandes de stand ; virages nommés par circuit (`track export`) ; alerte « voiture plus rapide derrière » (écart en temps) ; README complet avec captures |
+| 14 Ingénieur complet | fait | économie de carburant chiffrée (lever de pied par virage, vérification, renfort, abandon) ; conscience de course (incidents, stands, position, écarts officiels et tendance, derniers tours) ; briefing et débrief ; qualification (tour lancé, secteurs) ; tendance par virage ; bouton qui coupe l'ingénieur ; interface (position, incidents, plan d'économie) |
 
 ## Synthèse
 

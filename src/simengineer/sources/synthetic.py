@@ -462,7 +462,7 @@ def generate(sc: Scenario) -> RawSession:
     order = np.argsort(-dist, axis=1, kind="stable")
     ranks = np.empty_like(order)
     np.put_along_axis(ranks, order, np.arange(1, len(idxs) + 1)[None, :].repeat(n_frames, 0), 1)
-    car_pos = np.zeros((n_frames, N_CARS), dtype=np.int64)
+    car_pos = np.zeros((n_frames, N_CARS), dtype=np.int16)
     car_f2 = np.full((n_frames, N_CARS), -1.0, dtype=np.float32)
     v_avg = length / profiles[0].lap_time
     lead = dist.max(axis=1)

@@ -74,6 +74,12 @@ Dans la suite, `simengineer` = `.\.venv\Scripts\simengineer.exe`.
 | 35 | Course multiclasse (ou IA plus rapides) : laisse une voiture plus rapide te rattraper | « Voiture plus rapide, N secondes derrière » une seule fois par voiture, quelques secondes avant qu'elle n'arrive ; aucune annonce pour une voiture au même rythme | annonce trop tôt / trop tard / fausses alertes (`spotter.faster_*`) |
 | 36 | `pit_commands_enabled = true`, push-to-talk : « mets 20 litres » puis « oui » ; refaire avec « non » | la question « 20 litres au prochain arrêt, je valide ? », puis la boîte noire de stand change seulement après « oui » | OK / transcription de « oui »/« non » |
 | 37 | `simengineer track export`, nomme 2 virages (`label`), relance une séance | les conseils et l'interface utilisent les noms ; `simengineer track show` indique « fichier » | OK / bornes de virages à corriger |
+| 38 | Course où il manque 1 à 2 litres (réduis le carburant au départ) | « Économie de carburant : X litre par tour. Lève le pied N mètres avant … », puis un verdict à chaque tour ; en appliquant le plan, tu finis sans t'arrêter | économie annoncée vs conso réelle par tour (boîte noire) |
+| 39 | Départ de course | briefing : nombre de tours, carburant nécessaire d'après tes séances précédentes, verdict, limite d'incidents | texte entendu ; carburant prévu vs réel |
+| 40 | Pendant la course : incident, entrée aux stands au-dessus de la limite, gain/perte de place | « Incident : N sur L », « Voie des stands, limite 60 », « Vitesse dans les stands ! », « P5, tu gagnes 1 place » | limite d'incidents et vitesse des stands lues correctement ? position juste ? |
+| 41 | Arrivée (drapeau à damier) | débrief : position, places gagnées, meilleur tour, incidents | texte entendu |
+| 42 | Qualification | « Tour lancé », puis « Secteur 1, moins 0,12 »… | deltas cohérents avec le delta d'iRacing |
+| 43 | Push-to-talk pendant que l'ingénieur parle | il se tait immédiatement (sauf une alerte de danger) et reprend après | OK / non |
 
 ## C. Variables d'environnement
 

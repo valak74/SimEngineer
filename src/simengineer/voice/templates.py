@@ -248,6 +248,10 @@ TEMPLATES: dict[str, tuple[str, str]] = {
         "Mode entraînement : {theme}, virages {corners}",
         "Training mode: {theme}, turns {corners}",
     ),
+    "trend_loss": (
+        "{c}, {loss} seconde perdue depuis {laps} tours",
+        "{c}, losing {loss} for {laps} laps",
+    ),
     "delta_ref": ("{delta} sur la référence", "{delta} to reference"),
     # --- Version détaillée des conseils (rapports, écran)
     "advl_brake_later": (

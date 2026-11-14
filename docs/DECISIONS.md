@@ -30,3 +30,8 @@
 | D26 | Commandes de stand vocales : mise en attente 20 s puis « oui »/« non » traités localement, jamais par le LLM ; la question de confirmation est dite telle quelle | une transcription erronée ne doit pas modifier le ravitaillement |
 | D27 | « Voiture plus rapide derrière » : écart en temps (instant de passage du pilote au même point), rapprochement ≥ 0,04 s/s sur ~2 s, annonce P1 unique par voiture à ≤ 3 s ; l'écart en mètres (accordéon aux freinages) donnait de fausses alertes | pas de variable de classe vérifiée |
 | D28 | CI GitHub Actions Windows + Ubuntu ; les tests désactivent l'interface (pas de navigateur) | détecter tôt les problèmes propres à Windows |
+| D29 | Économie de carburant visée à l'arrivée avec 0,5 L de réserve (pas un tour de marge) ; proposée seulement si l'effort ≤ 10 % de la conso, sinon stratégie d'arrêt ; plan stable, renforcé après 2 tours manqués selon l'efficacité mesurée, abandonné si l'objectif devient inatteignable | un ingénieur ne change pas de consigne à chaque tour |
+| D30 | Écarts en course : classement (`CarIdxF2Time`) si disponible, sinon position en piste | iRacing fournit l'écart au leader |
+| D31 | Briefing : conso et temps au tour = médianes de tes tours valides sur le même circuit/voiture | robuste aux tours atypiques |
+| D32 | Tendance par virage : 3 derniers tours tous dégradés vs meilleure période de 3 tours, remise à zéro si la référence change | éviter les fausses alertes |
+| D33 | Bouton push-to-talk enfoncé : l'ingénieur se tait (coupure du message en cours sauf P0) | le pilote doit pouvoir parler |

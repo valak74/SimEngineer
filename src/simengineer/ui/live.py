@@ -79,6 +79,18 @@ def build_snapshot(
         "ref_label": app.coach.reference_label,
         "spoken": [{"p": int(u.priority), "text": u.text} for u in app.arbiter.spoken[-12:][::-1]],
     }
+    race = app.engineer.state.race if app.engineer is not None else None
+    snap["race"] = (
+        {
+            "position": race.position,
+            "gained": race.gained,
+            "incidents": race.incidents,
+            "incident_limit": race.incident_limit,
+            "finished": race.finished,
+        }
+        if race is not None
+        else None
+    )
     training = app.coach.training
     snap["training"] = (
         {
