@@ -89,6 +89,7 @@ class SimEngineerApp:
         self.total_frame_s = 0.0
         self._frame_hooks: list[Callable[[Frame], None]] = []
         self._poll_hooks: list[Callable[[], None]] = []
+        self._ready_hooks: list[Callable[[], None]] = []
         self._lap_ids: dict[int, int] = {}
 
     # --- extensions (delta de référence, dialogue)
@@ -97,6 +98,10 @@ class SimEngineerApp:
 
     def add_poll_hook(self, hook: Callable[[], None]) -> None:
         self._poll_hooks.append(hook)
+
+    def on_ready(self, hook: Callable[[], None]) -> None:
+        """Appelé une fois la session ouverte (ingénieur et coach disponibles)."""
+        self._ready_hooks.append(hook)
 
     def say(self, utt: Utterance) -> bool:
         return self.arbiter.submit(utt)
@@ -121,6 +126,8 @@ class SimEngineerApp:
             self.coach.corners = [Corner.from_dict(c) for c in stored]
         self._select_reference()
         self.bus.publish(SessionStarted(self.info, self.session_id))
+        for hook in self._ready_hooks:
+            hook()
         log.info(
             "Session %d : %s, %s, %s", self.session_id, self.info.track_name,
             self.info.car_name, self.info.session_type,

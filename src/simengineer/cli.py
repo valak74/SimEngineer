@@ -240,5 +240,29 @@ def report(
     typer.echo(f"Rapport écrit : {target}")
 
 
+@app.command("ask")
+def ask(
+    question: Annotated[str, typer.Argument(help="Question à l'ingénieur.")],
+    config: ConfigOpt = None,
+    scenario: Annotated[str, typer.Option(help="Scénario synthétique rejoué avant.")] = "race",
+    local: Annotated[bool, typer.Option("--local", help="Sans LLM (gabarits).")] = False,
+) -> None:
+    """Pose une question à l'ingénieur après un rejeu synthétique (test du dialogue/LLM)."""
+    from simengineer.app import SimEngineerApp
+    from simengineer.runtime import make_dialogue_engine
+    from simengineer.sources.scenarios import get_scenario
+    from simengineer.sources.synthetic import SyntheticSource
+
+    cfg = _load(config)
+    cfg.voice.tts_backend = "null"
+    cfg.source.realtime = False
+    if local:
+        cfg.llm.enabled = False
+    application = SimEngineerApp(cfg, SyntheticSource(get_scenario(scenario)))
+    application.run(max_frames=60 * 60 * 9)
+    result = make_dialogue_engine(application).answer(question)
+    typer.echo(f"{result.text}\n  [source : {result.source} ; outils : {result.tools_used}]")
+
+
 if __name__ == "__main__":
     app()
