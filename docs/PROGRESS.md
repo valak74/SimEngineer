@@ -10,6 +10,6 @@
 | 5 Coach | fait | détection de virages, 13 métriques par virage, règles seuillées, comparaison à une référence, classement par gain, 1-2 conseils P2, worker basse priorité, rapport de session par gabarit ; défauts injectés retrouvés et chiffrés |
 | 6 Dialogue et LLM | fait | STT faster-whisper + push-to-talk (clavier/volant), client OpenAI-compatible Qwen -> DeepSeek (délai 8 s, 1 relance, bascule, plafond quotidien), 9 outils validés par pydantic, garde-fou « chiffres sourcés », mode tout local par gabarits, commentaire de rapport ; appels réels non testés (pas de clé) |
 | 7 Références | fait | import .ibt et CSV (unités auto, temps reconstruit), provenance + droits obligatoires, delta temps réel O(1), sélection automatique même circuit/même voiture |
-| 8 Profil et programme | à faire | |
+| 8 Profil et programme | fait | tendances par virage multi-séances (pente, défaut dominant), un thème par séance avec exercices et objectif chiffré, calibration des seuils sur la dispersion du pilote (appliquée à la séance suivante) |
 | 9 Setup | à faire | |
 | 10 Packaging et perf | à faire | |

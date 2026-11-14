@@ -343,5 +343,59 @@ def sessions(config: ConfigOpt = None) -> None:
         )
 
 
+def _track_car(store: object, track: str, car: str) -> tuple[str, str]:
+    from simengineer.store.db import Store
+
+    assert isinstance(store, Store)
+    if track and car:
+        return track, car
+    sess = store.session(_session_or_last(store, None))
+    return track or sess.track, car or sess.car
+
+
+@app.command("profile")
+def profile(
+    config: ConfigOpt = None,
+    track: Annotated[str, typer.Option(help="Circuit (défaut : dernière session).")] = "",
+    car: Annotated[str, typer.Option(help="Voiture (défaut : dernière session).")] = "",
+) -> None:
+    """Profil pilote : tendances par virage sur toutes les séances de ce circuit/voiture."""
+    from simengineer.coach.profile import build_profile, render_profile
+    from simengineer.store.db import Store
+
+    cfg = _load(config)
+    store = Store(cfg.data_dir)
+    track, car = _track_car(store, track, car)
+    prof = build_profile(store, track, car)
+    if prof is None:
+        typer.echo(f"Pas encore de tours analysés pour {track} / {car}.")
+        raise typer.Exit(1)
+    typer.echo(render_profile(prof, cfg.language))
+
+
+@app.command("training")
+def training(
+    config: ConfigOpt = None,
+    track: Annotated[str, typer.Option(help="Circuit (défaut : dernière session).")] = "",
+    car: Annotated[str, typer.Option(help="Voiture (défaut : dernière session).")] = "",
+) -> None:
+    """Programme d'entraînement : un thème pour la prochaine séance."""
+    from simengineer.coach.profile import build_profile
+    from simengineer.coach.training import build_plan
+    from simengineer.store.db import Store
+
+    cfg = _load(config)
+    store = Store(cfg.data_dir)
+    track, car = _track_car(store, track, car)
+    prof = build_profile(store, track, car)
+    if prof is None:
+        typer.echo(f"Pas encore de tours analysés pour {track} / {car}.")
+        raise typer.Exit(1)
+    key = f"plan_last:{track}:{car}"
+    plan = build_plan(prof, cfg.language, avoid=store.kv_get(key))
+    store.kv_set(key, plan.theme)
+    typer.echo(plan.render(cfg.language))
+
+
 if __name__ == "__main__":
     app()

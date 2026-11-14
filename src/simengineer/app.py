@@ -84,6 +84,7 @@ class SimEngineerApp:
         self.info = SessionInfo()
         self.engineer: RaceEngineer | None = None
         self.spotter: Spotter | None = None
+        self.coach_cfg = cfg.coach
         self.frames = 0
         self.max_frame_ms = 0.0
         self.total_frame_s = 0.0
@@ -121,6 +122,12 @@ class SimEngineerApp:
                 cfg.language,
                 cfg.data_dir / cfg.spotter.alerts_log,
             )
+        from simengineer.coach.calibration import apply_calibration
+
+        # Seuils du coach calibrés sur la dispersion du pilote (séances précédentes).
+        self.coach_cfg = apply_calibration(
+            self.store, self.info.track_name, self.info.car_name, cfg.coach
+        )
         stored = self.store.kv_get(trackmap_key(self.info.track_name))
         if stored:
             self.coach.corners = [Corner.from_dict(c) for c in stored]
@@ -215,7 +222,7 @@ class SimEngineerApp:
         rel = str(npz.relative_to(self.store.data_dir))
         coach = self.coach
         self.worker.submit(
-            process_lap, lap, coach.reference, coach.corners or None, self.cfg.coach,
+            process_lap, lap, coach.reference, coach.corners or None, self.coach_cfg,
             self.cfg.language, coach.reference_label, npz, rel,
         )  # fmt: skip
 
@@ -238,7 +245,7 @@ class SimEngineerApp:
             coach.last_analysis = res.analysis
             self.store.add_corner_results(self.session_id, lap_id, corner_rows(res.analysis))
             if announce and self.cfg.coach.enabled:
-                for utt in debrief_utterances(res.analysis, self.cfg.coach):
+                for utt in debrief_utterances(res.analysis, self.coach_cfg):
                     self.arbiter.submit(utt)
         if lap.valid and not coach.reference_is_imported:
             # Sans référence importée : le meilleur tour de la séance sert de référence.
@@ -255,6 +262,10 @@ class SimEngineerApp:
         try:
             for result in self.worker.drain():
                 self._on_result(result, announce=False)
+            if self.session_id:
+                from simengineer.coach.calibration import calibrate
+
+                calibrate(self.store, self.info.track_name, self.info.car_name, self.cfg.coach)
         finally:
             self.worker.close()
             if self.spotter is not None:
