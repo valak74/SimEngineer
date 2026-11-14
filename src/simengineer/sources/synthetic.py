@@ -279,10 +279,16 @@ def generate(sc: Scenario) -> RawSession:
         _n("session_state"): np.full(n_frames, 4, dtype=np.int64),
     }
     # Position (Lat/Lon) : fonction de la distance au tour (même tracé à chaque tour).
+    # Tracé fermé : virage global réparti pour totaliser un tour complet, puis la petite
+    # dérive de fermeture est corrigée linéairement (géométrie de démonstration seulement).
     geo = profiles[0]
-    heading = np.cumsum(geo.curvature * DS)
-    x = np.interp(s_lap, geo.s, np.cumsum(np.cos(heading) * DS))
-    y = np.interp(s_lap, geo.s, np.cumsum(np.sin(heading) * DS))
+    turn = np.cumsum(geo.curvature * DS)
+    heading = turn + (2.0 * np.pi - turn[-1]) * geo.s / track.length_m
+    gx, gy = np.cumsum(np.cos(heading) * DS), np.cumsum(np.sin(heading) * DS)
+    frac = geo.s / track.length_m
+    gx, gy = gx - gx[-1] * frac, gy - gy[-1] * frac
+    x = np.interp(s_lap, geo.s, gx)
+    y = np.interp(s_lap, geo.s, gy)
     cols[_n("lat")] = 45.0 + y / 111_320.0
     cols[_n("lon")] = 5.0 + x / (111_320.0 * np.cos(np.radians(45.0)))
 
@@ -422,5 +428,7 @@ def gap_for_distance_at(track: TrackDef, t: float, distance_m: float) -> float:
 
 
 class SyntheticSource(RawSessionSource):
-    def __init__(self, scenario: Scenario | None = None, realtime: bool = False) -> None:
-        super().__init__(generate(scenario or Scenario()), "synthetic", realtime)
+    def __init__(
+        self, scenario: Scenario | None = None, realtime: bool = False, speed: float = 1.0
+    ) -> None:
+        super().__init__(generate(scenario or Scenario()), "synthetic", realtime, speed)

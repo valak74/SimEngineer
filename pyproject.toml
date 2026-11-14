@@ -28,7 +28,7 @@ simengineer = "simengineer.cli:app"
 where = ["src"]
 
 [tool.setuptools.package-data]
-simengineer = ["py.typed"]
+simengineer = ["py.typed", "ui/static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

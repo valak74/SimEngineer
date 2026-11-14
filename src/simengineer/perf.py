@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import platform
 import sys
+import threading
 import time
 from dataclasses import asdict, dataclass
 from typing import Any
@@ -25,6 +26,7 @@ RAM_BUDGET_MB = 150.0
 @dataclass(slots=True)
 class PerfResult:
     source: str
+    with_ui: bool
     seconds: float
     frames: int
     cpu_pct_of_one_core: float
@@ -89,13 +91,41 @@ def _cpu_name() -> str:
     return name or "inconnu"
 
 
-def measure(cfg: AppConfig, seconds: float = 30.0) -> PerfResult:
-    """Fait tourner l'application en temps réel pendant `seconds` et mesure le processus."""
+def _sse_client(url: str, stop: threading.Event) -> None:
+    """Simule un navigateur abonné au flux direct de l'interface."""
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen(url, timeout=10) as r:
+            while not stop.is_set() and r.readline():
+                pass
+    except OSError:
+        return
+
+
+def measure(cfg: AppConfig, seconds: float = 30.0, with_ui: bool = False) -> PerfResult:
+    """Fait tourner l'application en temps réel pendant `seconds` et mesure le processus.
+
+    `with_ui` : serveur d'interface démarré ET un client abonné au flux direct (le serveur
+    tourne dans le processus du collecteur, son coût est donc compté).
+    """
     cfg = cfg.model_copy(deep=True)
     cfg.source.realtime = True
     cfg.voice.tts_backend = "null"
     cfg.voice.ptt_kind = "none"
     app = SimEngineerApp(cfg, make_source(cfg.source), NullSpeaker())
+    server = None
+    stop = threading.Event()
+    if with_ui:
+        from simengineer.ui.server import UIServer
+
+        cfg.ui.port = 0
+        server = UIServer(cfg)
+        server.start()
+        server.attach(app)
+        threading.Thread(
+            target=_sse_client, args=(f"{server.url}api/live/stream", stop), daemon=True
+        ).start()
     worker = {"cpu": 0.0, "rss": 0.0}
     rss = {"max": 0.0}
 
@@ -107,12 +137,18 @@ def measure(cfg: AppConfig, seconds: float = 30.0) -> PerfResult:
 
     app.add_poll_hook(sample)
     cpu0, wall0 = time.process_time(), time.perf_counter()
-    app.run(max_frames=int(seconds * 60))
-    cpu1, wall1 = time.process_time(), time.perf_counter()
+    try:
+        app.run(max_frames=int(seconds * 60))
+        cpu1, wall1 = time.process_time(), time.perf_counter()
+    finally:
+        stop.set()
+        if server is not None:
+            server.stop()
     stats = app.stats()
     wall = wall1 - wall0
     return PerfResult(
         source=cfg.source.kind,
+        with_ui=with_ui,
         seconds=round(wall, 1),
         frames=stats["frames"],
         cpu_pct_of_one_core=round((cpu1 - cpu0) / wall * 100.0, 2),
@@ -132,7 +168,8 @@ def render(result: PerfResult) -> str:
     ok = "OUI" if result.within_budget else "NON"
     return "\n".join(
         [
-            f"Source                : {result.source} ({result.seconds} s, {result.frames} images)",
+            f"Source                : {result.source} ({result.seconds} s, {result.frames} images)"
+            + (" + interface avec un client connecté" if result.with_ui else ""),
             f"CPU collecteur        : {result.cpu_pct_of_one_core} % d'un cœur"
             f" (budget < {CPU_BUDGET_PCT} %)",
             f"RAM collecteur (RSS)  : {result.rss_mb} Mo (budget < {RAM_BUDGET_MB:.0f} Mo)",

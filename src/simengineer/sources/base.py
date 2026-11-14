@@ -132,10 +132,13 @@ class RawSession:
 class RawSessionSource:
     """Rejoue une `RawSession` image par image (temps réel ou accéléré)."""
 
-    def __init__(self, raw: RawSession, name: str, realtime: bool = False) -> None:
+    def __init__(
+        self, raw: RawSession, name: str, realtime: bool = False, speed: float = 1.0
+    ) -> None:
         self.name = name
         self._raw = raw
         self._realtime = realtime
+        self._speed = speed
 
     def open(self) -> None:
         return None
@@ -158,7 +161,7 @@ class RawSessionSource:
             name: (col.tolist() if col.ndim == 1 and not self._realtime else col)
             for name, col in raw.columns.items()
         }
-        period = 1.0 / raw.tick_rate
+        period = 1.0 / (raw.tick_rate * self._speed)
         start = time.perf_counter()
         idx = 0
 

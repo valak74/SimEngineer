@@ -18,3 +18,8 @@
 | D14 | Indices de setup relatifs (rapport de direction 12:1, empattement 2,46 m configurables), signes volant/latéral estimés par corrélation | ne pas supposer de convention |
 | D15 | Calibration des seuils du coach = max(base, 1,5 × dispersion), plafonnée à 3 × base, appliquée à la séance suivante | réversible, explicable |
 | D16 | Démarrage avec iRacing : raccourci dans « Démarrage » de Windows + attente passive (sondage 2 s) | plus simple qu'un service Windows |
+| D17 | Interface = page web locale servie par l'application (stdlib `http.server`, HTML/CSS/JS sans dépendance ni CDN), lecture seule | aucune dépendance, utilisable sur un second écran/tablette, hors ligne |
+| D18 | Direct par Server-Sent Events à 4 Hz (temps de session), instantané publié par affectation atomique | coût minimal dans la boucle, pas de verrou |
+| D19 | Historique de l'interface calculé dans un processus séparé à basse priorité | règle 4, même si l'on consulte en roulant |
+| D20 | Style sombre futuriste inspiré de Go Setups, sans logo, nom ni ressource de cette marque ; police Bahnschrift (fournie avec Windows) | identité propre, rien à télécharger |
+| D21 | Interface en français uniquement (les textes générés suivent `language`) | simplicité ; traduction ajoutable plus tard |

@@ -68,4 +68,6 @@ Tous les noms sont centralisés dans `src/simengineer/core/vars.py` (`VARS`).
 |---|---|
 | Budget CPU/RAM tenu avec la source `live` (mesuré seulement en simulé : 1,74 %, 80 Mo) | à mesurer (`simengineer perf --source live`) |
 | Pas de baisse de FPS iRacing | à mesurer |
+| Rendu de l'interface dans Edge/Chrome sous Windows (police Bahnschrift) identique aux captures Chromium Linux | à vérifier |
+| L'interface ouverte sur le PC de jeu ne fait pas baisser les FPS | à mesurer |
 | L'exécutable PyInstaller embarque correctement faster-whisper / Piper / onnxruntime | à vérifier |

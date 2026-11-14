@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import typer
 
 from simengineer.core.config import AppConfig, load_config, load_dotenv
 from simengineer.core.log import get_logger, setup_logging
+
+if TYPE_CHECKING:
+    from simengineer.ui.server import UIServer
 
 app = typer.Typer(
     help="SimEngineer : ingénieur de course IA local pour iRacing.",
@@ -138,8 +141,17 @@ def run(
         bool, typer.Option("--null-voice", help="Sans audio : affiche ce qui serait dit.")
     ] = False,
     max_frames: Annotated[int | None, typer.Option(help="Arrêt après N images.")] = None,
+    speed: Annotated[
+        float | None, typer.Option(help="Rejeu temps réel accéléré (démo), ex. 4.")
+    ] = None,
+    ui: Annotated[
+        bool | None, typer.Option("--ui/--no-ui", help="Interface dans le navigateur.")
+    ] = None,
+    keep_ui: Annotated[
+        bool, typer.Option("--keep-ui", help="Garder l'interface ouverte après la session.")
+    ] = False,
 ) -> None:
-    """Lance l'ingénieur de course (spotter, carburant, coach, dialogue)."""
+    """Lance l'ingénieur de course (spotter, carburant, coach, dialogue, interface)."""
     from simengineer.runtime import build_app
 
     cfg = _load(config, source, ibt)
@@ -147,25 +159,89 @@ def run(
         cfg.source.scenario = scenario
     if realtime is not None:
         cfg.source.realtime = realtime
+    if speed is not None:
+        cfg.source.speed = speed
+    if ui is not None:
+        cfg.ui.enabled = ui
     if null_voice:
         cfg.voice.tts_backend = "null"
         cfg.voice.ptt_kind = "none"
+    server = _start_ui(cfg) if cfg.ui.enabled else None
     # Source live : après chaque session on se remet en attente d'iRacing (démarrage auto).
     keep_waiting = cfg.source.kind == "live" and cfg.source.wait_for_sim and max_frames is None
-    while True:
-        application = build_app(cfg, echo=typer.echo)
-        try:
-            session_id = application.run(max_frames)
-        except KeyboardInterrupt:
-            typer.echo("Arrêt demandé.")
-            break
-        stats = application.stats()
-        typer.echo(
-            f"Session {session_id} terminée : {stats['frames']} images, "
-            f"{stats['mean_frame_ms']} ms/image en moyenne, max {stats['max_frame_ms']} ms."
-        )
-        if not keep_waiting:
-            break
+    try:
+        while True:
+            application = build_app(cfg, echo=typer.echo)
+            if server is not None:
+                server.attach(application)
+            try:
+                session_id = application.run(max_frames)
+            except KeyboardInterrupt:
+                typer.echo("Arrêt demandé.")
+                break
+            stats = application.stats()
+            typer.echo(
+                f"Session {session_id} terminée : {stats['frames']} images, "
+                f"{stats['mean_frame_ms']} ms/image en moyenne, max {stats['max_frame_ms']} ms."
+            )
+            if not keep_waiting:
+                break
+        if server is not None and keep_ui:
+            _serve_forever(server)
+    finally:
+        if server is not None:
+            server.stop()
+
+
+def _start_ui(cfg: AppConfig, inline: bool = False) -> UIServer | None:
+    from simengineer.ui.server import UIServer
+
+    server = UIServer(cfg, inline_queries=inline)
+    try:
+        server.start()
+    except OSError as exc:
+        typer.echo(f"Interface indisponible (port {cfg.ui.port} occupé ?) : {exc}")
+        return None
+    typer.echo(f"Interface : {server.url}")
+    if cfg.ui.open_browser:
+        import webbrowser
+
+        webbrowser.open(server.url)
+    return server
+
+
+def _serve_forever(server: UIServer) -> None:
+    import time
+
+    typer.echo("Interface ouverte. Ctrl+C pour quitter.")
+    try:
+        while True:
+            time.sleep(1.0)
+    except KeyboardInterrupt:
+        return
+
+
+@app.command("ui")
+def ui_command(
+    config: ConfigOpt = None,
+    port: Annotated[int | None, typer.Option(help="Port (défaut : ui.port).")] = None,
+    no_browser: Annotated[
+        bool, typer.Option("--no-browser", help="Ne pas ouvrir le navigateur.")
+    ] = False,
+) -> None:
+    """Ouvre l'interface (historique : séances, pilote, setup, références) sans rouler."""
+    cfg = _load(config)
+    if port is not None:
+        cfg.ui.port = port
+    if no_browser:
+        cfg.ui.open_browser = False
+    server = _start_ui(cfg)
+    if server is None:
+        raise typer.Exit(1)
+    try:
+        _serve_forever(server)
+    finally:
+        server.stop()
 
 
 def _session_or_last(store: object, session: int | None) -> int:
@@ -515,6 +591,9 @@ def perf(
     json_out: Annotated[
         Path | None, typer.Option("--json", help="Écrit le résultat en JSON.")
     ] = None,
+    with_ui: Annotated[
+        bool, typer.Option("--with-ui", help="Compte aussi l'interface et un client connecté.")
+    ] = False,
 ) -> None:
     """Mesure CPU/RAM du collecteur en temps réel (budget : < 3 % d'un cœur, < 150 Mo)."""
     import json
@@ -524,7 +603,7 @@ def perf(
     cfg = _load(config, source, ibt)
     if cfg.source.kind == "synthetic" and not source:
         cfg.source.scenario = "perf"
-    result = measure(cfg, seconds)
+    result = measure(cfg, seconds, with_ui)
     typer.echo(render(result))
     if json_out:
         json_out.write_text(json.dumps(result.to_dict(), indent=2), encoding="utf-8")

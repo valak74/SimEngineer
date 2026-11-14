@@ -10,6 +10,7 @@ data_dir = "data"
 kind = "synthetic"         # "live" | "ibt_replay" | "synthetic"
 ibt_path = ""              # pour ibt_replay
 realtime = true            # false = rejoue aussi vite que possible
+speed = 1.0                # rejeu temps réel accéléré (démo) : 4.0 = 4x
 scenario = "race"          # scénario synthétique
 
 [voice]
@@ -37,6 +38,13 @@ pit_commands_enabled = false   # RÈGLE 1 : écritures SDK désactivées par dé
 [coach]
 enabled = true
 max_advice = 2
+
+[ui]
+enabled = true             # interface locale dans le navigateur
+host = "127.0.0.1"         # "0.0.0.0" pour la voir sur une tablette du réseau local
+port = 8765
+open_browser = true
+refresh_hz = 4.0
 
 [llm]
 enabled = true             # false = mode "tout local" (gabarits uniquement)

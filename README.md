@@ -8,8 +8,10 @@ virage, dialogue vocal push-to-talk, références et conseils de setup.
 - Installation et vérifications sur le PC de jeu : [docs/RUN_ON_PC.md](docs/RUN_ON_PC.md)
 - Hypothèses à vérifier : [docs/ASSUMPTIONS.md](docs/ASSUMPTIONS.md)
 
+Interface : `http://127.0.0.1:8765/` (sombre, futuriste ; ouverte par `simengineer run`).
+
 ```
 pip install -e ".[dev]"
-simengineer run --source synthetic --no-realtime   # démonstration sans iRacing
+simengineer run --source synthetic --scenario race --speed 6 --null-voice --keep-ui   # démo avec interface
 pytest -q
 ```

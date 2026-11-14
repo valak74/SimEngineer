@@ -44,6 +44,7 @@ débriefs, références et conseils de setup. Voir `CLAUDE.md` pour les règles 
 | `reference` | import .ibt/CSV avec métadonnées de droits, delta temps réel, sélection |
 | `setup` | diagnostic sous/survirage et pneus, avant/après, guide d'application manuelle |
 | `llm` | client multi-fournisseurs, outils validés, dialogue, budget, rapport |
+| `ui` | interface web locale en lecture seule : direct (SSE 4 Hz) et historique (processus basse priorité) |
 
 ## Données
 - `data/simengineer.db` : SQLite.

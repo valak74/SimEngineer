@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>SimEngineer</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 29 9.5v13L16 30 3 22.5v-13z" fill="none" stroke="#00e1ff" stroke-width="2"/><path d="M10 20.5 16 11l6 9.5" fill="none" stroke="#00e1ff" stroke-width="2.4" stroke-linejoin="round"/><circle cx="16" cy="20.5" r="2" fill="#fff"/></svg>
+    <span>SIM<b>ENGINEER</b></span>
+  </div>
+  <nav class="tabs">
+    <a href="#live" data-page="live">Direct</a>
+    <a href="#sessions" data-page="sessions">Séances</a>
+    <a href="#driver" data-page="driver">Pilote</a>
+    <a href="#setup" data-page="setup">Setup</a>
+    <a href="#refs" data-page="refs">Références</a>
+  </nav>
+  <div class="status">
+    <span id="flag" class="pill flag green" hidden>Vert</span>
+    <span id="status" class="pill"><span class="dot"></span><span id="status-text">Connexion…</span></span>
+  </div>
+</header>
+
+<main>
+  <!-- ================= DIRECT ================= -->
+  <section id="page-live" class="page">
+    <div id="live-waiting" class="waiting">
+      <div class="huge">EN ATTENTE</div>
+      <div>Lance iRacing et prends la piste : SimEngineer se connecte tout seul.</div>
+      <div class="scan"></div>
+    </div>
+    <div id="live-body" hidden>
+      <div class="page-head">
+        <div>
+          <h1 id="lv-track">—</h1>
+          <div class="c-muted" id="lv-car">—</div>
+        </div>
+        <div class="c-muted" id="lv-ref">—</div>
+      </div>
+      <div class="grid">
+        <div class="card s4" id="c-delta">
+          <h3>Delta <span class="r" id="lv-delta-ref">vs référence</span></h3>
+          <div class="huge" id="lv-delta">—</div>
+          <div class="bar center"><i id="lv-delta-bar"></i></div>
+          <div class="ticks"><span>−1,0 s</span><span>0</span><span>+1,0 s</span></div>
+        </div>
+        <div class="card s3">
+          <h3>Tour <span class="r" id="lv-lapno">—</span></h3>
+          <dl class="kv">
+            <dt>Dernier</dt><dd id="lv-last">—</dd>
+            <dt>Meilleur</dt><dd id="lv-best" class="c-accent">—</dd>
+            <dt>Écart au meilleur</dt><dd id="lv-dbest">—</dd>
+          </dl>
+          <div class="speedo">
+            <div><div class="big" id="lv-speed">—</div><div class="unit">km/h · <span id="lv-gear">—</span></div></div>
+            <div class="pedal thr" title="Accélérateur"><i id="lv-thr"></i></div>
+            <div class="pedal brk" title="Frein"><i id="lv-brk"></i></div>
+          </div>
+        </div>
+        <div class="card s3" id="c-fuel">
+          <h3>Carburant <span class="r" id="lv-fuel-l">—</span></h3>
+          <div><span class="big" id="lv-fuel-laps">—</span><span class="unit">tours</span></div>
+          <div class="sub" id="lv-fuel-sub">—</div>
+          <div class="bar"><i id="lv-fuel-bar"></i></div>
+          <div class="say" id="lv-fuel-say">—</div>
+        </div>
+        <div class="card s2" id="c-pit">
+          <h3>Stand</h3>
+          <div class="big" id="lv-pit" style="font-size:28px">—</div>
+          <div class="sub" id="lv-pit-sub">—</div>
+        </div>
+
+        <div class="card s8 map-card">
+          <h3>Circuit <span class="r" id="lv-map-info"></span></h3>
+          <div class="map-wrap" id="lv-map"><div class="map-empty">Le tracé apparaîtra après le premier tour de référence.</div></div>
+        </div>
+        <div class="card s4">
+          <h3>Radio <span class="r">ce que dit l'ingénieur</span></h3>
+          <ul class="feed" id="lv-feed"></ul>
+        </div>
+
+        <div class="card s6 ok">
+          <h3>Coach <span class="r" id="lv-adv-lap"></span></h3>
+          <ul class="advice" id="lv-advice"></ul>
+        </div>
+        <div class="card s2">
+          <h3>Écarts</h3>
+          <dl class="kv"><dt>Devant</dt><dd id="lv-ahead">—</dd><dt>Derrière</dt><dd id="lv-behind">—</dd></dl>
+        </div>
+        <div class="card s2">
+          <h3>Pneus</h3>
+          <dl class="kv"><dt>Relais</dt><dd id="lv-stint">—</dd><dt>Usure restante</dt><dd id="lv-wear">—</dd></dl>
+        </div>
+        <div class="card s2">
+          <h3>Météo</h3>
+          <dl class="kv"><dt>Piste</dt><dd id="lv-track-t">—</dd><dt>Air</dt><dd id="lv-air-t">—</dd><dt>Évolution</dt><dd id="lv-dtemp">—</dd></dl>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="page-sessions" class="page"></section>
+  <section id="page-driver" class="page"></section>
+  <section id="page-setup" class="page"></section>
+  <section id="page-refs" class="page"></section>
+</main>
+<footer>SimEngineer · local · lecture seule</footer>
+<script src="/app.js"></script>
+</body>
+</html>

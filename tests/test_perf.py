@@ -28,3 +28,9 @@ def test_position_precision_measure() -> None:
     assert res.median_spread_m is not None and res.median_spread_m < 0.5
     assert res.quantization_m is not None and res.quantization_m > 0
     assert not measure_position_precision(grids[:1]).available
+
+
+def test_perf_measure_with_ui_client(cfg: AppConfig) -> None:
+    cfg.source.scenario = "perf"
+    res = measure(cfg, seconds=1.5, with_ui=True)
+    assert res.with_ui and res.frames == 90 and "interface" in render(res)

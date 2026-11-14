@@ -13,6 +13,7 @@
 | 8 Profil et programme | fait | tendances par virage multi-séances (pente, défaut dominant), un thème par séance avec exercices et objectif chiffré, calibration des seuils sur la dispersion du pilote (appliquée à la séance suivante) |
 | 9 Setup | fait | indice de sous-virage et contre-braquages par phase (signes estimés, pas supposés), températures/pressions pneus, pistes de réglage, avant/après sur tours propres avec verdict, guide d'application manuelle |
 | 10 Packaging et perf | fait | scripts Windows (installation, démarrage auto, PyInstaller), `perf` : 1,74 % d'un cœur et 80 Mo en simulé, `measure-position`, attente et reconnexion iRacing, source live testée avec un faux pyirsdk ; tout reste à vérifier sur le PC (RUN_ON_PC.md) |
+| 11 Interface | fait | interface web locale sombre/futuriste : Direct (delta, tour, carburant, stand, carte du circuit avec voitures, radio, coach, écarts, pneus, météo), Séances, Pilote, Setup, Références ; 1,5 % d'un cœur et 87 Mo avec un client connecté ; rendu vérifié par captures (Chromium), pas encore sur le PC |
 
 ## Synthèse
 

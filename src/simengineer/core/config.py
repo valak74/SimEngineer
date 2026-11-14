@@ -30,6 +30,7 @@ class SourceConfig(_Section):
     kind: Literal["live", "ibt_replay", "synthetic"] = "synthetic"
     ibt_path: str = ""
     realtime: bool = True
+    speed: float = Field(default=1.0, gt=0.0, le=50.0)  # rejeu : x1 = temps réel
     scenario: str = "race"
     wait_for_sim: bool = True
 
@@ -156,6 +157,14 @@ class LLMConfig(_Section):
     providers: list[LLMProviderConfig] = Field(default_factory=_default_providers)
 
 
+class UIConfig(_Section):
+    enabled: bool = True
+    host: str = "127.0.0.1"  # "0.0.0.0" pour l'ouvrir à une tablette du réseau local
+    port: int = 8765
+    open_browser: bool = True
+    refresh_hz: float = Field(default=4.0, gt=0.0, le=20.0)
+
+
 class LoggingConfig(_Section):
     level: str = "INFO"
     file: str = ""
@@ -171,6 +180,7 @@ class AppConfig(_Section):
     coach: CoachConfig = Field(default_factory=CoachConfig)
     setup: SetupConfig = Field(default_factory=SetupConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
+    ui: UIConfig = Field(default_factory=UIConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
 

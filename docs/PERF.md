@@ -37,6 +37,22 @@ Optimisations appliquées après une première mesure à 2,27 % :
 **À confirmer sur le PC de jeu** avec `--source live` (RUN_ON_PC.md, points 23 à 25) :
 la source live fait un appel pyirsdk par variable et par image, coût non mesuré ici.
 
+## Avec l'interface (navigateur)
+
+Le serveur de l'interface tourne dans le processus du collecteur : son coût est compté.
+`simengineer perf --seconds 120 --with-ui` (serveur démarré + un client abonné au flux direct) :
+
+| Mesure | Valeur | Budget |
+|---|---|---|
+| CPU du collecteur | **1,51 % d'un cœur** | < 3 % |
+| RAM du collecteur (RSS) | **87 Mo** | < 150 Mo |
+
+L'instantané direct est construit 4 fois par seconde (temps de session) à partir de données
+déjà calculées ; les pages d'historique (analyse, profil, setup) sont calculées dans un
+processus séparé à basse priorité. Le rendu dans le navigateur consomme du CPU/GPU côté
+navigateur : sur le PC de jeu, préférer un second écran, une tablette ou un téléphone
+(`ui.host = "0.0.0.0"`), et vérifier les FPS (RUN_ON_PC.md, point 31).
+
 ## Hors budget du collecteur (mesurés à part sur le PC)
 
 - **TTS Piper** : thread dédié ; phrases P0 pré-synthétisées au démarrage (cache disque).

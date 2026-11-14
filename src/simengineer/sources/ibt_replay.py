@@ -9,8 +9,8 @@ from simengineer.sources.ibt_format import read_ibt
 
 
 class IbtReplaySource(RawSessionSource):
-    def __init__(self, path: Path, realtime: bool = False) -> None:
+    def __init__(self, path: Path, realtime: bool = False, speed: float = 1.0) -> None:
         if not path.is_file():
             raise FileNotFoundError(f"Fichier .ibt introuvable : {path}")
-        super().__init__(read_ibt(path), "ibt_replay", realtime)
+        super().__init__(read_ibt(path), "ibt_replay", realtime, speed)
         self.path = path

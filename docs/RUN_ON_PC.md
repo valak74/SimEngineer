@@ -65,6 +65,9 @@ Dans la suite, `simengineer` = `.\.venv\Scripts\simengineer.exe`.
 | 26 | Démarrage automatique : `powershell -ExecutionPolicy Bypass -File scripts\install_autostart.ps1`, redémarre Windows, lance iRacing | fenêtre SimEngineer réduite « En attente d'iRacing… » puis « Connecté à iRacing. » ; se remet en attente après la session | OK / non |
 | 27 | (facultatif) Exécutable autonome : `scripts\build_exe.ps1` puis `dist\simengineer\simengineer.exe say-test` | même comportement que la version Python | OK / erreur PyInstaller |
 | 28 | Setup : après un arrêt au stand, `simengineer setup diagnose` ; compare l'ordre gauche/milieu/droite des températures avec l'écran garage d'iRacing | températures identiques, intérieur/extérieur bien identifiés | ordre constaté |
+| 30 | Interface : `simengineer run --source live` ouvre `http://127.0.0.1:8765/` dans le navigateur | onglet Direct « En attente » puis « En direct » en piste ; delta, carburant, stand, radio, carte du circuit après le premier tour de référence | capture d'écran ; éléments faux ou illisibles |
+| 31 | FPS iRacing avec l'interface ouverte sur le **même** PC, puis sur une tablette/téléphone (`ui.host = "0.0.0.0"` dans `simengineer.toml`, puis `http://<IP-du-PC>:8765/`, autoriser le port dans le pare-feu Windows) | pas de baisse de FPS notable ; mise à jour fluide | FPS sans / avec interface locale / avec tablette |
+| 32 | `simengineer perf --source live --with-ui --seconds 120`, interface ouverte | « Dans le budget : OUI » | les lignes affichées |
 | 29 | Setup avant/après : 5 tours, change un réglage, `simengineer setup mark "…"`, 5 tours, `simengineer setup compare` | tableau avant/après et verdict | sortie |
 
 ## C. Variables d'environnement
@@ -81,7 +84,8 @@ Changer de fournisseur ou de modèle se fait uniquement dans `simengineer.toml`
 ## D. Lancer l'outil
 
 ```powershell
-simengineer run --source live            # attend iRacing, puis spotter + ingénieur + coach + dialogue
+simengineer run --source live            # attend iRacing, puis spotter + ingénieur + coach + dialogue + interface
+simengineer ui                           # interface seule (historique : séances, pilote, setup, références)
 simengineer run --source live --null-voice   # sans audio : affiche ce qui serait dit
 simengineer analyze                      # conseils par virage de la dernière session
 simengineer report [--llm]               # rapport Markdown (commentaire LLM optionnel)
@@ -90,6 +94,11 @@ simengineer ref import <fichier> --source "…" --rights "…"   # tour de réf�
 simengineer setup diagnose | mark "…" | compare | guide
 simengineer perf --source live           # mesure CPU/RAM
 ```
+
+Interface : `http://127.0.0.1:8765/` (ouverte automatiquement ; `--no-ui` pour la désactiver,
+`[ui]` dans `simengineer.toml` pour le port, l'ouverture automatique et l'accès tablette).
+Démo de l'interface sans iRacing :
+`simengineer run --source synthetic --scenario race --speed 6 --null-voice --keep-ui`.
 
 Sans iRacing : `--source synthetic` (scénarios `race`, `clean`, `stopped_car`, `overtake`,
 `accident`, `perf`) ou `--source ibt_replay --ibt <fichier.ibt>`.
