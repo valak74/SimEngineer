@@ -51,3 +51,32 @@ jobs:
           simengineer analyze
           simengineer report
           simengineer setup diagnose
+
+  windows-install:
+    name: Installateur Windows (voix réelles)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        id: py
+        with:
+          python-version: "3.12"
+
+      - name: Installateur sans intervention
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts\install_windows.ps1 `
+            -Unattended -NoShortcuts -Python "${{ steps.py.outputs.python-path }}"
+
+      - name: Vérifications après installation
+        shell: pwsh
+        run: |
+          $se = ".venv\Scripts\simengineer.exe"
+          & $se say-test --synth-only
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          .venv\Scripts\python.exe -c "import irsdk, faster_whisper, sounddevice, openai, psutil; print('modules OK')"
+          & $se run --source synthetic --scenario clean --no-realtime --null-voice --no-ui --diagnostic
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Get-ChildItem $HOME\Desktop\SimEngineer-diagnostic-*.zip, $HOME\SimEngineer-diagnostic-*.zip -ErrorAction SilentlyContinue

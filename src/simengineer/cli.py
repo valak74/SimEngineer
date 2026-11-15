@@ -91,6 +91,9 @@ def say_test(
     config: ConfigOpt = None,
     text: Annotated[str | None, typer.Option(help="Phrase libre à prononcer.")] = None,
     null: Annotated[bool, typer.Option("--null", help="Sans audio : affiche le texte.")] = False,
+    synth_only: Annotated[
+        bool, typer.Option("--synth-only", help="Synthèse Piper sans lecture (vérification).")
+    ] = False,
 ) -> None:
     """Teste la voix : une alerte P0, une info P1, un conseil P2 (et mesure la latence)."""
     import time
@@ -100,6 +103,24 @@ def say_test(
     from simengineer.voice.templates import corner_word, render
 
     cfg = _load(config)
+    if synth_only:
+        from simengineer.voice.tts import PiperTTS, TTSUnavailableError
+
+        piper = PiperTTS({"fr": cfg.voice.piper_voice_fr, "en": cfg.voice.piper_voice_en})
+        try:
+            for phrase in (render("car_left", cfg.language), render("fuel_laps", cfg.language,
+                                                                    laps=12)):  # fmt: skip
+                t0 = time.perf_counter()
+                audio = piper.synthesize(phrase, cfg.language)
+                ms = (time.perf_counter() - t0) * 1000.0
+                typer.echo(f"  « {phrase} » : {audio.duration_s:.2f} s d'audio en {ms:.0f} ms")
+                if audio.duration_s <= 0.2:
+                    raise TTSUnavailableError("audio vide")
+        except TTSUnavailableError as exc:
+            typer.echo(f"Voix indisponible : {exc}")
+            raise typer.Exit(1) from exc
+        typer.echo("Synthèse vocale OK.")
+        return
     if null:
         cfg.voice.tts_backend = "null"
 
@@ -151,6 +172,9 @@ def run(
         bool,
         typer.Option("--training", help="Mode entraînement : rappel avant les virages ciblés."),
     ] = False,
+    diagnostic: Annotated[
+        bool, typer.Option("--diagnostic", help="Forcer le diagnostic (zip sur le Bureau).")
+    ] = False,
     keep_ui: Annotated[
         bool, typer.Option("--keep-ui", help="Garder l'interface ouverte après la session.")
     ] = False,
@@ -172,14 +196,27 @@ def run(
     if null_voice:
         cfg.voice.tts_backend = "null"
         cfg.voice.ptt_kind = "none"
-    server = _start_ui(cfg) if cfg.ui.enabled else None
+    live = cfg.source.kind == "live"
+    # En direct, le navigateur s'ouvre quand iRacing se connecte (pas au démarrage de Windows).
+    server = _start_ui(cfg, open_now=not live) if cfg.ui.enabled else None
+    browser_opened = [not live]
     # Source live : après chaque session on se remet en attente d'iRacing (démarrage auto).
-    keep_waiting = cfg.source.kind == "live" and cfg.source.wait_for_sim and max_frames is None
+    keep_waiting = live and cfg.source.wait_for_sim and max_frames is None
     try:
         while True:
-            application = build_app(cfg, echo=typer.echo)
+            application = build_app(cfg, echo=typer.echo, diagnostic=diagnostic)
             if server is not None:
                 server.attach(application)
+                if not browser_opened[0] and cfg.ui.open_browser:
+
+                    def open_browser(url: str = server.url) -> None:
+                        if not browser_opened[0]:
+                            browser_opened[0] = True
+                            import webbrowser
+
+                            webbrowser.open(url)
+
+                    application.on_ready(open_browser)
             try:
                 session_id = application.run(max_frames)
             except KeyboardInterrupt:
@@ -199,7 +236,7 @@ def run(
             server.stop()
 
 
-def _start_ui(cfg: AppConfig, inline: bool = False) -> UIServer | None:
+def _start_ui(cfg: AppConfig, inline: bool = False, open_now: bool = True) -> UIServer | None:
     from simengineer.ui.server import UIServer
 
     server = UIServer(cfg, inline_queries=inline)
@@ -209,7 +246,7 @@ def _start_ui(cfg: AppConfig, inline: bool = False) -> UIServer | None:
         typer.echo(f"Interface indisponible (port {cfg.ui.port} occupé ?) : {exc}")
         return None
     typer.echo(f"Interface : {server.url}")
-    if cfg.ui.open_browser:
+    if cfg.ui.open_browser and open_now:
         import webbrowser
 
         webbrowser.open(server.url)
@@ -683,6 +720,72 @@ def perf(
         json_out.write_text(json.dumps(result.to_dict(), indent=2), encoding="utf-8")
     if check and not result.within_budget:
         raise typer.Exit(1)
+
+
+@app.command("voices")
+def voices(
+    config: ConfigOpt = None,
+    models_dir: Annotated[Path, typer.Option(help="Dossier des voix.")] = Path("models"),
+) -> None:
+    """Télécharge les voix Piper française et anglaise (si absentes)."""
+    from simengineer.voice.download import download_voices
+
+    _load(config)
+    present = download_voices(models_dir, echo=typer.echo)
+    ok = len([p for p in present if p.suffix == ".onnx"])
+    typer.echo(f"Voix prêtes : {ok}/2")
+    if ok == 0:
+        raise typer.Exit(1)
+
+
+@app.command("ptt-detect")
+def ptt_detect(
+    config: ConfigOpt = None,
+    timeout: Annotated[float, typer.Option(help="Secondes d'attente.")] = 30.0,
+    toml: Annotated[Path, typer.Option(help="Fichier à mettre à jour.")] = Path("simengineer.toml"),
+) -> None:
+    """Appuie sur le bouton (volant, boîte à boutons ou touche) : il devient le push-to-talk."""
+    from simengineer.core.config_edit import set_config_value
+    from simengineer.voice.ptt_detect import detect, joystick_probe, keyboard_probe
+
+    _load(config)
+    probes = [p for p in (joystick_probe(), keyboard_probe()) if p is not None]
+    if not probes:
+        typer.echo("Aucun volant ni clavier détectable (pip install simengineer[voice]).")
+        raise typer.Exit(1)
+    typer.echo(f"Appuie maintenant sur le bouton pour parler à l'ingénieur ({timeout:.0f} s)…")
+    hit = detect(probes, timeout)
+    if hit is None:
+        typer.echo("Rien détecté : push-to-talk inchangé.")
+        raise typer.Exit(1)
+    set_config_value(toml, "voice", "ptt_kind", hit.kind)
+    if hit.kind == "joystick":
+        set_config_value(toml, "voice", "ptt_joystick_index", hit.joystick_index)
+        set_config_value(toml, "voice", "ptt_button", hit.button)
+        typer.echo(f"Bouton {hit.button} de « {hit.device} » enregistré.")
+    else:
+        set_config_value(toml, "voice", "ptt_key", hit.key)
+        typer.echo(f"Touche « {hit.key} » enregistrée.")
+
+
+@app.command("config-set")
+def config_set(
+    section: str,
+    key: str,
+    value: str,
+    toml: Annotated[Path, typer.Option(help="Fichier à mettre à jour.")] = Path("simengineer.toml"),
+) -> None:
+    """Modifie une valeur de simengineer.toml (utilisé par l'installateur)."""
+    import json
+
+    from simengineer.core.config_edit import set_config_value
+
+    try:
+        parsed: object = json.loads(value)
+    except ValueError:
+        parsed = value
+    set_config_value(toml, section, key, parsed)
+    typer.echo(f"[{section}] {key} = {value}")
 
 
 if __name__ == "__main__":

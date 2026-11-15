@@ -181,6 +181,12 @@ class UIConfig(_Section):
     refresh_hz: float = Field(default=4.0, gt=0.0, le=20.0)
 
 
+class DiagnosticConfig(_Section):
+    # "auto" : à la première séance réelle (et après une mise à jour qui le demande)
+    mode: Literal["auto", "always", "off"] = "auto"
+    zip_dir: str = ""  # vide = Bureau
+
+
 class LoggingConfig(_Section):
     level: str = "INFO"
     file: str = ""
@@ -197,6 +203,7 @@ class AppConfig(_Section):
     setup: SetupConfig = Field(default_factory=SetupConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     ui: UIConfig = Field(default_factory=UIConfig)
+    diagnostic: DiagnosticConfig = Field(default_factory=DiagnosticConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
 

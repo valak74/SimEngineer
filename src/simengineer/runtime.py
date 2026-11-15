@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 
 from simengineer.app import SimEngineerApp
 from simengineer.core.config import AppConfig
 from simengineer.core.log import get_logger
+from simengineer.diagnostic import DiagnosticRecorder, diagnostic_needed
 from simengineer.llm.budget import DailyBudget
 from simengineer.llm.client import ProviderChain, build_chain
 from simengineer.llm.dialogue import DialogueEngine
@@ -78,8 +80,34 @@ def attach_dialogue(app: SimEngineerApp) -> None:
     app.on_ready(start)
 
 
-def build_app(cfg: AppConfig, echo: Callable[[str], None] | None = None) -> SimEngineerApp:
-    speaker = make_speaker(cfg, echo=echo, on_started=_log_latency)
+def attach_diagnostic(app: SimEngineerApp, force: bool = False) -> DiagnosticRecorder | None:
+    """Diagnostic automatique : première séance réelle (ou forcé)."""
+    cfg = app.cfg
+    mode = cfg.diagnostic.mode
+    if mode == "off" and not force:
+        return None
+    first_live = cfg.source.kind == "live" and diagnostic_needed(app.store)
+    if not force and mode == "auto" and not first_live:
+        return None
+    zip_dir = Path(cfg.diagnostic.zip_dir) if cfg.diagnostic.zip_dir else None
+    recorder = DiagnosticRecorder(cfg.data_dir / "diagnostic", zip_dir)
+    recorder.attach(app)
+    return recorder
+
+
+def build_app(
+    cfg: AppConfig, echo: Callable[[str], None] | None = None, diagnostic: bool = False
+) -> SimEngineerApp:
+    holder: dict[str, DiagnosticRecorder | None] = {"diag": None}
+
+    def on_started(utt: Utterance, ms: float) -> None:
+        _log_latency(utt, ms)
+        diag = holder["diag"]
+        if diag is not None:
+            diag.record_latency(utt.key, int(utt.priority), ms)
+
+    speaker = make_speaker(cfg, echo=echo, on_started=on_started)
     app = SimEngineerApp(cfg, make_source(cfg.source), speaker)
     attach_dialogue(app)
+    holder["diag"] = attach_diagnostic(app, force=diagnostic)
     return app
