@@ -78,4 +78,7 @@ Tous les noms sont centralisés dans `src/simengineer/core/vars.py` (`VARS`).
 | L'interface ouverte sur le PC de jeu ne fait pas baisser les FPS | à mesurer |
 | L'écart en temps calculé depuis `CarIdxLapDistPct` suffit à détecter une voiture plus rapide sans variable de classe | à vérifier en course multiclasse |
 | faster-whisper transcrit correctement « oui » / « non » courts pour la confirmation de stand | à vérifier |
+| winget est disponible (Windows 10 récent / 11) pour installer Python 3.12 et Git | à vérifier |
+| `piper-tts` s'installe et synthétise sous Windows (vérifié en CI Windows si la tâche « Installateur » est verte) | voir CI |
+| Le module `keyboard` capte les touches sans droits administrateur ; pygame voit le volant | à vérifier |
 | L'exécutable PyInstaller embarque correctement faster-whisper / Piper / onnxruntime | à vérifier |

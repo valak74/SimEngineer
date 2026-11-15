@@ -99,29 +99,45 @@ Ces règles sont non négociables (détail dans [`CLAUDE.md`](CLAUDE.md)) :
 
 ## Installation (Windows)
 
-Prérequis : **Windows 10/11**, **Python 3.12** (case *Add to PATH* cochée), git.
+**Une seule commande.** Ouvre PowerShell (touche Windows, tape « PowerShell ») et colle :
 
 ```powershell
-git clone https://github.com/valak74/SimEngineer.git
+irm https://raw.githubusercontent.com/valak74/SimEngineer/ccr-13bdc1b6-mxglbc/scripts/bootstrap.ps1 | iex
+```
+
+Tout le reste est automatique :
+
+1. Installe Python 3.12 et Git si besoin (winget), puis SimEngineer dans `%USERPROFILE%\SimEngineer`.
+2. Télécharge les voix française et anglaise et vérifie qu'elles fonctionnent.
+3. Te demande tes clés d'API. C'est facultatif : Entrée pour passer, tout marche sans.
+4. Te demande d'**appuyer sur le bouton de ton volant** : il devient le bouton pour parler.
+5. Joue 4 phrases de test dans ton casque.
+6. Crée un raccourci sur le Bureau et **démarre SimEngineer avec Windows**. Il attend iRacing sans consommer de CPU, ouvre l'interface quand tu prends la piste, et **se met à jour tout seul** à chaque lancement.
+
+**Ta première séance sur iRacing produit un diagnostic automatique.** Un fichier `SimEngineer-diagnostic-….zip` apparaît sur ton Bureau. Il contient :
+
+- les variables réelles du SDK ;
+- 3 tours enregistrés et rejouables, avec les noms des autres pilotes anonymisés ;
+- des contrôles automatiques ;
+- la latence de la voix, le CPU et la RAM.
+
+Envoie-le tel quel. Rien ne quitte ta machine sans toi.
+
+<details>
+<summary>Installation manuelle (si tu préfères)</summary>
+
+```powershell
+git clone -b ccr-13bdc1b6-mxglbc https://github.com/valak74/SimEngineer.git
 cd SimEngineer
 powershell -ExecutionPolicy Bypass -File scripts\install_windows.ps1
 ```
 
-Le script crée `.venv`, installe `simengineer[live,llm,voice,perf]` et crée `simengineer.toml` (source `live`).
-
-Ensuite :
-
-1. **Voix** : télécharge dans `models\` une voix Piper française (`fr_FR-siwis-medium.onnx` + `.onnx.json`), et une anglaise si besoin. Les chemins sont dans `simengineer.toml`.
-2. **Clés d'API** (facultatives, voir [Configuration](#configuration)).
-3. **Démarrage automatique** avec Windows (attend iRacing sans consommer de CPU) :
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File scripts\install_autostart.ps1
-   ```
-4. **Exécutable autonome** (facultatif) : `scripts\build_exe.ps1` → `dist\simengineer\simengineer.exe`.
-
-> Dans la suite, `simengineer` = `.\.venv\Scripts\simengineer.exe` (ou active le venv).
+Exécutable autonome (facultatif) : `scripts\build_exe.ps1`.
+</details>
 
 ## Démarrage rapide
+
+> Pour les commandes ci-dessous : `cd $HOME\SimEngineer` puis `.\.venv\Scripts\Activate.ps1`.
 
 **Sans iRacing**, pour tout voir tout de suite (course de démonstration accélérée ×6) :
 
@@ -134,9 +150,10 @@ L'interface s'ouvre sur `http://127.0.0.1:8765/`. Les messages vocaux s'affichen
 **Avec iRacing** :
 
 ```powershell
-simengineer dump-vars --source live   # une fois, en piste : vérifie les variables du SDK
-simengineer say-test                  # vérifie la voix et la latence
-simengineer run --source live         # attend iRacing, puis tout démarre
+# Rien à faire : le raccourci « SimEngineer » (et le démarrage avec Windows) lance
+#   simengineer run --source live   → attend iRacing, puis tout démarre
+simengineer ptt-detect                # changer de bouton pour parler
+simengineer run --source live --diagnostic   # refaire un diagnostic (zip sur le Bureau)
 ```
 
 ## Utilisation au quotidien

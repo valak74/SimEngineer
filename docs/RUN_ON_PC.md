@@ -1,10 +1,27 @@
 # À faire sur le PC de jeu (Windows 10/11)
 
-Tout ce qui suit n'a pas pu être vérifié dans l'environnement de développement (Linux, sans
-iRacing, sans carte audio, sans clé d'API). Le code est écrit et testé en simulé ; chaque point
-ci-dessous doit être confirmé sur ton PC. **Renvoie-moi le résultat de chaque point** (une
-ligne suffit, ou le fichier indiqué) : je corrigerai `VARS` et les hypothèses de
-`docs/ASSUMPTIONS.md` en conséquence.
+## Parcours automatique (recommandé)
+
+1. Dans PowerShell, colle :
+   ```powershell
+   irm https://raw.githubusercontent.com/valak74/SimEngineer/ccr-13bdc1b6-mxglbc/scripts/bootstrap.ps1 | iex
+   ```
+   Réponds aux questions : clés d'API (Entrée pour passer), puis appuie sur ton bouton de volant.
+2. Lance iRacing et roule une séance d'au moins 3 tours propres. Ajoute une course contre
+   l'IA si tu peux.
+3. Quitte la séance. Le fichier `SimEngineer-diagnostic-….zip` sur ton Bureau couvre
+   automatiquement les points 4, 5, 6, 21, 23 et la latence du point 3 :
+   - variables du SDK ;
+   - temps au tour recalculés comparés à ceux d'iRacing ;
+   - valeurs observées : côtés, positions, drapeaux, carburant, Lat/Lon ;
+   - infos de session lues ;
+   - latence de la voix ;
+   - CPU et RAM ;
+   - 3 tours rejouables.
+4. **Envoie ce zip** dans la conversation, avec tes remarques en vrac : ce qui sonne faux,
+   arrive trop tard ou manque.
+
+Le reste de cette page détaille les vérifications pour qui veut aller plus loin.
 
 ## A. Installation
 

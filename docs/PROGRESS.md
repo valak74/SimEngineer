@@ -17,6 +17,7 @@
 | 12 Entraînement + traces | fait | mode entraînement (`run --training`) : rappel vocal ≤ 8 mots dans la ligne droite ~3,5 s avant le freinage des virages du programme, chiffré par le dernier tour ; traces superposées tour/référence dans Séances (delta, vitesse, gaz, frein, volant), zoom par virage, réticule |
 | 13 Fiabilité et GT3 | fait | CI Windows + Ubuntu ; confirmation vocale des commandes de stand ; virages nommés par circuit (`track export`) ; alerte « voiture plus rapide derrière » (écart en temps) ; README complet avec captures |
 | 14 Ingénieur complet | fait | économie de carburant chiffrée (lever de pied par virage, vérification, renfort, abandon) ; conscience de course (incidents, stands, position, écarts officiels et tendance, derniers tours) ; briefing et débrief ; qualification (tour lancé, secteurs) ; tendance par virage ; bouton qui coupe l'ingénieur ; interface (position, incidents, plan d'économie) |
+| 15 Tout automatique | fait | bootstrap en une commande, installateur (voix, bouton, clés, raccourcis, démarrage avec Windows), mise à jour automatique, diagnostic automatique de la première séance (zip sur le Bureau) ; installateur testé en CI Windows |
 
 ## Synthèse
 

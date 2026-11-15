@@ -35,3 +35,7 @@
 | D31 | Briefing : conso et temps au tour = médianes de tes tours valides sur le même circuit/voiture | robuste aux tours atypiques |
 | D32 | Tendance par virage : 3 derniers tours tous dégradés vs meilleure période de 3 tours, remise à zéro si la référence change | éviter les fausses alertes |
 | D33 | Bouton push-to-talk enfoncé : l'ingénieur se tait (coupure du message en cours sauf P0) | le pilote doit pouvoir parler |
+| D34 | Installation en une commande (`irm … \| iex`) : winget pour Python 3.12 et Git, clone dans `%USERPROFILE%\SimEngineer`, installateur rejouable | aucune étape manuelle |
+| D35 | Mise à jour automatique au lancement (`git pull --ff-only` + réinstallation des dépendances si le code a changé) ; en cas d'échec, la version installée démarre | les corrections arrivent sans action |
+| D36 | Diagnostic automatique à la première séance réelle (puis à chaque incrément de `DIAG_REV`) : zip sur le Bureau, envoyé par le pilote lui-même ; noms des autres pilotes anonymisés dans l'échantillon | rien ne sort sans le pilote |
+| D37 | Interface : en source `live`, le navigateur s'ouvre à la connexion d'iRacing, pas au démarrage de Windows | démarrage avec Windows discret |
